@@ -1,0 +1,53 @@
+[
+  {
+    "timestamp": "2026-08-12T14:00:00Z",
+    "solar_array_current_a": 8.4,
+    "payload_power_draw_w": 28.0,
+    "bus_voltage_v": 28.3,
+    "battery_soc_percent": 63.0,
+    "command_activity": "NOMINAL_ATTITUDE_HOLD",
+    "communications_status": "GROUND_CONTACT",
+    "image_utility_score": 0.87
+  },
+  {
+    "timestamp": "2026-08-12T14:05:00Z",
+    "solar_array_current_a": 7.9,
+    "payload_power_draw_w": 62.0,
+    "bus_voltage_v": 27.9,
+    "battery_soc_percent": 57.2,
+    "command_activity": "PAYLOAD_WARMUP",
+    "communications_status": "GROUND_CONTACT",
+    "image_utility_score": 0.73
+  },
+  {
+    "timestamp": "2026-08-12T14:10:00Z",
+    "solar_array_current_a": 6.2,
+    "payload_power_draw_w": 108.0,
+    "bus_voltage_v": 27.1,
+    "battery_soc_percent": 43.5,
+    "command_activity": "PAYLOAD_IMAGING_BURST",
+    "communications_status": "PASS_ENDING",
+    "image_utility_score": 0.46
+  },
+  {
+    "timestamp": "2026-08-12T14:15:00Z",
+    "solar_array_current_a": 4.8,
+    "payload_power_draw_w": 114.0,
+    "bus_voltage_v": 26.5,
+    "battery_soc_percent": 31.7,
+    "command_activity": "PAYLOAD_IMAGING_BURST",
+    "communications_status": "NO_CONTACT_WINDOW",
+    "image_utility_score": 0.28
+  },
+  {
+    "timestamp": "2026-08-12T14:20:00Z",
+    "solar_array_current_a": 3.6,
+    "payload_power_draw_w": 112.0,
+    "bus_voltage_v": 25.9,
+    "battery_soc_percent": 21.8,
+    "command_activity": "PAYLOAD_IMAGING_BURST",
+    "communications_status": "NO_CONTACT_WINDOW",
+    "image_utility_score": 0.18
+  }
+]
+
