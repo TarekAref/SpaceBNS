@@ -13,6 +13,8 @@ node_modules/
 .next/
 out/
 npm-debug.log*
+*.tsbuildinfo
+next-env.d.ts
 
 # Secrets and local configuration
 .env
