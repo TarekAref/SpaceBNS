@@ -10,6 +10,8 @@ from typing import Any
 from fastapi import FastAPI
 from fastapi.middleware.cors import CORSMiddleware
 
+from backend.app.policy import apply_power_thresholds
+
 APP_VERSION = "0.1.0"
 REPOSITORY_ROOT = Path(__file__).resolve().parents[2]
 MOCK_TELEMETRY_PATH = REPOSITORY_ROOT / "data" / "mock" / "telemetry.json"
@@ -84,36 +86,7 @@ def mock_assessment() -> dict[str, Any]:
     """
 
     latest = load_mock_telemetry()[-1]
-    findings: list[dict[str, str]] = []
-
-    if latest["bus_voltage_v"] < 26.0:
-        findings.append(
-            {
-                "code": "BUS_VOLTAGE_LOW",
-                "evidence": "bus_voltage_v below public demo threshold",
-            }
-        )
-    if latest["battery_soc_percent"] < 25.0:
-        findings.append(
-            {
-                "code": "BATTERY_SOC_LOW",
-                "evidence": "battery_soc_percent below public demo threshold",
-            }
-        )
-    if latest["payload_power_draw_w"] > 100.0:
-        findings.append(
-            {
-                "code": "PAYLOAD_LOAD_HIGH",
-                "evidence": "payload_power_draw_w above public demo threshold",
-            }
-        )
-    if latest["image_utility_score"] < 0.30:
-        findings.append(
-            {
-                "code": "IMAGE_UTILITY_LOW",
-                "evidence": "edge-reported image utility below public demo threshold",
-            }
-        )
+    findings = apply_power_thresholds(latest)
 
     risk_level = "high" if len(findings) >= 3 else "advisory"
     recommendation = (
