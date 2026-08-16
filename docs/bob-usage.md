@@ -54,6 +54,21 @@ Copy this section for each meaningful Bob-assisted task.
 
 ---
 
+### Task: Deterministic scenario generator implementation and review
+
+- **Date (UTC):** 2026-08-15
+- **Developer:** Tarek Aref
+- **Bob mode/workflow:** IBM Bob Agent mode with human approval
+- **Goal:** Implement and test a deterministic prototype scenario generator that proves the feasibility of the synthetic power-breach corpus design before the full 300-scenario balanced corpus is built.
+- **Prompt summary:** Design and implement `generate_prototype_scenarios()` to produce exactly 9 deterministic positive-breach scenarios covering all 3 breach types (SOC_ONLY, VOLTAGE_ONLY, BOTH) across all 3 timing bands (early, middle, late); write 23 property-based tests (T01–T23) to verify physics correctness, schema compliance, determinism, and safety metadata; validate the full backend test suite.
+- **Files affected:** `backend/scripts/__init__.py`, `backend/scripts/generate_scenarios.py`, `backend/tests/test_generate_scenarios.py`
+- **Bob contribution:** Designed the closed-form physics calibration approach (no random rejection loops), implemented the three scenario families (SOC_ONLY, VOLTAGE_ONLY, BOTH) with calibrated initial conditions, wrote all 23 test functions with parametrised coverage across all 9 scenario IDs, and integrated the `backend/scripts` package init.
+- **Human review and corrections:** Tarek reviewed the breach-type vocabulary and corrected it from an earlier draft that used `SOC_BELOW_25` and `BUS_VOLTAGE_LOW` to the canonical values `SOC_ONLY`, `VOLTAGE_ONLY`, and `BOTH` used throughout the contract and generator.
+- **Validation performed:** 175 generator-specific tests passed (23 test functions × 9 parametrised scenarios, plus module-level tests); 200 total backend tests passed. Commit: `983ab37`.
+- **Result:** `generate_prototype_scenarios()` returns exactly 9 deterministic, physics-consistent positive scenarios that serve as scientific test anchors for the prototype stage. No balanced training corpus or trained AI model exists yet; those remain to be built.
+
+---
+
 ## Suggested evidence categories
 
 - architecture decomposition;

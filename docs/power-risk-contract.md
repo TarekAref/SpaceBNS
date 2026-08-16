@@ -1,6 +1,8 @@
 # SpaceBNS Power-Risk Prediction — Implementation Contract
 
-**Status:** design contract — no implementation yet
+**Status:** design contract — prototype development in progress (deterministic
+scenario generator implemented; balanced training corpus and trained model not
+yet produced)
 
 **Prototype status:** NOT_FLIGHT_QUALIFIED
 
@@ -107,6 +109,30 @@ available:
 
 ## 5. Synthetic Scenario Corpus
 
+### Prototype development stage
+
+`backend/scripts/generate_scenarios.py` currently exports one public function:
+
+```
+generate_prototype_scenarios() -> list[dict]
+```
+
+It returns **exactly 9 deterministic positive-breach scenarios** with no
+randomness or fixed random seed.  The 9 scenarios are scientific test anchors
+that exhaustively cover the 3 × 3 breach-type / timing-band matrix:
+
+| Breach type    | Timing bands covered        |
+|----------------|-----------------------------|
+| `SOC_ONLY`     | early, middle, late         |
+| `VOLTAGE_ONLY` | early, middle, late         |
+| `BOTH`         | early, middle, late         |
+
+**These 9 scenarios are prototype feasibility probes only.** They must not be
+used alone to train or evaluate the AI classifier.  All 9 carry
+`power_constraint_breach_within_24h = 1` (positive class); they contain no
+negative examples and therefore do not constitute a balanced corpus.  The
+balanced 300-scenario corpus described below remains to be generated.
+
 ### Generation approach
 
 The corpus is generated reproducibly at build/train time by a fixed-seed Python
@@ -116,11 +142,11 @@ never enter Git history.
 | Item | Value |
 |---|---|
 | Generator script | `backend/scripts/generate_scenarios.py` |
-| Random seed | Fixed constant in the script; documented in a comment |
+| Random seed | Not required for the deterministic prototype stage; will be a fixed constant when the full 300-scenario corpus generator is implemented |
 | Output file | `data/scenarios/power_scenarios.json` (gitignored) |
 | Directory name | `data/scenarios/` — avoids the `.bobignore` conflict with `data/training/` |
 | Regeneration command | `python backend/scripts/generate_scenarios.py` |
-| Determinism guarantee | Same seed always produces the same 300 scenarios in the same order |
+| Determinism guarantee | For the prototype stage: nine closed-form physics scenarios are fully deterministic with no randomness. For the full corpus: same seed will always produce the same 300 scenarios in the same order |
 
 ### Scenario counts and split
 
@@ -138,15 +164,28 @@ to exactly one split before generating its samples.
 
 ### Scenario object schema
 
+Each raw telemetry sample contains **8 fields**.  Only the approved
+power-related inputs from those 8 fields are transformed into the 12 ML
+features described in Section 6.  `communications_status` and
+`image_utility_score` are raw telemetry and display fields; they are present in
+every sample but are **not** ML prediction features.
+
 ```json
 {
+  "metadata": {
+    "data_source":       "SYNTHETIC",
+    "prototype_status":  "NOT_FLIGHT_QUALIFIED",
+    "command_authority": "NONE",
+    "policy_decision":   "PERMITTED_FOR_SIMULATION_ONLY"
+  },
   "scenario_id":  "SYNTH-PWR-TRAIN-001",
   "split":        "train",
-  "label":        1,
+  "power_constraint_breach_within_24h": 1,
   "breach_detail": {
     "occurs":       true,
-    "breach_type":  "SOC_BELOW_25",
-    "hour_offset":  14
+    "breach_type":  "SOC_ONLY",
+    "timing_band":  "late",
+    "hour_offset":  18.5
   },
   "history": [
     {
@@ -155,15 +194,21 @@ to exactly one split before generating its samples.
       "payload_power_draw_w":  45.0,
       "bus_voltage_v":         27.4,
       "battery_soc_percent":   58.0,
-      "command_activity":      "NOMINAL_ATTITUDE_HOLD"
+      "command_activity":      "NOMINAL_ATTITUDE_HOLD",
+      "communications_status": "NO_CONTACT_WINDOW",
+      "image_utility_score":   0.72
     }
-  ]
+  ],
+  "future": []
 }
 ```
 
-`history` contains exactly 72 samples. Fields `image_utility_score` and
-`communications_status` are excluded; they are not used as features and add no
-value to the history array.
+`history` contains exactly 72 samples; `future` contains exactly 288 samples.
+`communications_status` and `image_utility_score` are present in every sample
+as raw telemetry fields.  They are not included in the 12-feature ML input
+vector and must not be added to the feature list.
+
+The `breach_type` vocabulary is: `SOC_ONLY`, `VOLTAGE_ONLY`, `BOTH`.
 
 ### Label eligibility
 
@@ -197,8 +242,14 @@ The generator must cover at minimum:
   intermittent bursts, nominal low draw (<60 W throughout).
 - Solar generation rate: declining (eclipse onset), stable, recovering.
 - `command_activity` sequence: imaging-burst-heavy, attitude-hold-only, mixed.
-- Breach timing for label-1 scenarios: early (hour 1–8), mid (hour 9–16), late
-  (hour 17–24).
+- Breach timing for label-1 scenarios: early (hour 2–8), mid (hour 8–16), late
+  (hour 16–23).
+- **Difficult negative cases (label = 0)** — the negative class must include
+  scenarios that superficially resemble positives:
+  - Low but recovering `battery_soc_percent` (30–40 %, trending upward);
+  - Temporary high payload load with sufficient solar generation to maintain
+    net-positive energy balance;
+  - `bus_voltage_v` approaching but not crossing 26.0 V within 24 hours.
 
 ### Public mock history file
 
@@ -222,8 +273,17 @@ All features are derived from the observation window. The classifier receives
 one feature vector per query. Feature extraction is implemented as a pure
 function with no I/O side effects.
 
-Explicitly excluded: `image_utility_score`, `communications_status`, linearly
-extrapolated 24-hour SOC, and any net-power calculation.
+Each raw telemetry sample carries 8 fields (see Section 5 schema).  Only the
+power-related fields — `battery_soc_percent`, `bus_voltage_v`,
+`solar_array_current_a`, and `payload_power_draw_w` — are transformed into ML
+features.  `communications_status` and `image_utility_score` remain raw
+telemetry and display fields; they are **not** ML prediction features and must
+not be added to the list below.  The approved feature list is frozen at 12
+items.
+
+Explicitly excluded from ML features: `communications_status`,
+`image_utility_score`, linearly extrapolated 24-hour SOC, and any net-power
+calculation.
 
 | # | Feature name | Derivation | Physical rationale |
 |---|---|---|---|
@@ -376,6 +436,13 @@ are identical in structure to the POST response.
 
 Both endpoints return the same structure.
 
+**All numeric values in the example below are illustrative documentation
+values chosen so that each `contribution` equals `standardized_value ×
+coefficient`.  The runtime implementation must populate every numeric field
+from the trained model and the live feature vector; these values must never be
+hardcoded.  Contributions describe learned model associations, not proven
+physical causation.**
+
 ```json
 {
   "data_source":       "SYNTHETIC",
@@ -394,13 +461,26 @@ Both endpoints return the same structure.
     "label":              "power_constraint_breach_within_24h",
     "predicted_class":    1,
     "breach_probability": 0.79,
-    "probability_note":   "Probability estimated from a logistic regression classifier trained on 180 synthetic scenarios. This is not an operational spacecraft failure probability.",
+    "probability_note":   "Probability estimated from a logistic regression classifier trained on 180 synthetic scenarios. This is an estimate learned from the synthetic scenario distribution and is not a validated real-spacecraft failure probability. No fixed demonstration value may be hardcoded or presented as operational truth.",
     "top_contributions": [
-      { "feature": "soc_slope",          "standardized_value": -2.1, "coefficient":  0.84, "contribution": -1.76 },
-      { "feature": "soc_latest",         "standardized_value": -1.4, "coefficient":  0.91, "contribution": -1.27 },
-      { "feature": "high_draw_fraction", "standardized_value":  1.8, "coefficient":  0.62, "contribution":  1.12 }
+      { "feature": "soc_slope",          "standardized_value": -2.10, "coefficient": -0.84, "contribution":  1.76 },
+      { "feature": "soc_latest",         "standardized_value": -1.40, "coefficient": -0.91, "contribution":  1.27 },
+      { "feature": "high_draw_fraction", "standardized_value":  1.80, "coefficient":  0.62, "contribution":  1.12 }
     ],
-    "all_contributions": []
+    "all_contributions": [
+      { "feature": "soc_latest",          "standardized_value": -1.40, "coefficient": -0.91, "contribution":  1.27 },
+      { "feature": "soc_mean",            "standardized_value": -0.80, "coefficient": -0.54, "contribution":  0.43 },
+      { "feature": "soc_min",             "standardized_value": -1.10, "coefficient": -0.63, "contribution":  0.69 },
+      { "feature": "soc_slope",           "standardized_value": -2.10, "coefficient": -0.84, "contribution":  1.76 },
+      { "feature": "voltage_latest",      "standardized_value": -0.30, "coefficient": -0.42, "contribution":  0.13 },
+      { "feature": "voltage_min",         "standardized_value": -0.50, "coefficient": -0.38, "contribution":  0.19 },
+      { "feature": "voltage_slope",       "standardized_value": -0.60, "coefficient": -0.31, "contribution":  0.19 },
+      { "feature": "solar_current_mean",  "standardized_value":  0.20, "coefficient": -0.27, "contribution": -0.05 },
+      { "feature": "solar_current_slope", "standardized_value":  0.10, "coefficient": -0.18, "contribution": -0.02 },
+      { "feature": "payload_draw_mean",   "standardized_value":  0.90, "coefficient":  0.45, "contribution":  0.41 },
+      { "feature": "payload_draw_max",    "standardized_value":  1.20, "coefficient":  0.52, "contribution":  0.62 },
+      { "feature": "high_draw_fraction",  "standardized_value":  1.80, "coefficient":  0.62, "contribution":  1.12 }
+    ]
   },
 
   "deterministic_projection": null,
@@ -563,9 +643,18 @@ reported.
 
 ## 13. Proposed File Plan
 
-No files have been created or modified by this contract.
+The following files have been created during the prototype stage.  Remaining
+files are planned.
 
-### New files to create
+### Files already created (prototype stage)
+
+| Path | Status | Purpose |
+|---|---|---|
+| `backend/scripts/__init__.py` | Created | Makes `backend/scripts` a Python package. |
+| `backend/scripts/generate_scenarios.py` | Created | Deterministic prototype generator. Currently produces 9 positive-class scenarios covering SOC_ONLY, VOLTAGE_ONLY, and BOTH across early/middle/late timing bands. Full 300-scenario balanced corpus generator to follow. |
+| `backend/tests/test_generate_scenarios.py` | Created | 23 tests (T01–T23) covering determinism, 3 × 3 type/band coverage, schema, sample counts, cadence, trajectory continuity, physics bounds, safety metadata, and label integrity for the prototype scenarios. |
+
+### New files still to create
 
 | Path | Purpose |
 |---|---|
@@ -574,13 +663,11 @@ No files have been created or modified by this contract.
 | `backend/app/features.py` | Pure module. Exports `extract_features(samples: list[dict]) -> dict[str, float]` (12 features) and `ols_slope(values: list[float], times: list[float]) -> float`. No I/O; no side effects. |
 | `backend/app/safety.py` | Exports the global FastAPI exception handler and the mandatory safety envelope dict. Registers the handler on the app to ensure the four mandatory fields appear on all unhandled error responses. |
 | `backend/app/prediction_service.py` | Core prediction service function called by both the POST and GET prediction endpoints. Accepts a list of sample dicts and optional projection assumptions. Returns the full four-layer response dict. |
-| `backend/scripts/generate_scenarios.py` | Fixed-seed generator. Produces `data/scenarios/power_scenarios.json` (300 scenarios). Output is gitignored. |
 | `backend/scripts/train_power_risk_model.py` | Loads the scenario corpus; extracts 12 features; runs hyperparameter selection on the validation split; trains the final pipeline on train + val; serialises to `data/models/power_risk_classifier.joblib`; prints metrics to stdout. |
 | `backend/scripts/evaluate_power_risk_model.py` | Loads the test split; runs inference; checks leakage and breach-eligibility before computing metrics; outputs a JSON report to stdout. Does not modify any file. |
 | `backend/tests/test_power_risk_prediction.py` | Contract, safety-envelope, L1/L3 boundary, degraded-mode, and failure-mode tests for both prediction endpoints. Uses `TestClient`. |
 | `backend/tests/test_features.py` | Unit tests for `extract_features()` and `ols_slope()` using known synthetic inputs with hand-computed expected values. |
 | `backend/tests/test_policy.py` | Unit tests for `apply_power_thresholds()` confirming that its output matches the existing `mock_assessment()` findings for all four threshold conditions. |
-| `backend/tests/test_generate_scenarios.py` | Checks determinism, scenario counts, split assignment, and breach-eligibility compliance of the generator. |
 
 ### Files to modify
 
@@ -625,7 +712,11 @@ interpreting any output.
    procedurally generated scenarios. Its probability outputs reflect the
    synthetic scenario distribution and must not be interpreted as operational
    spacecraft failure probabilities or as calibrated estimates against any real
-   spacecraft's behaviour.
+   spacecraft's behaviour.  `breach_probability` is an estimate learned from
+   the synthetic scenario distribution; it is not a validated real-spacecraft
+   failure probability.  No fixed demonstration value (such as 82 %) may be
+   hardcoded in source code, documentation, or UI and presented as operational
+   truth.
 
 2. **Small corpus.** 180 training scenarios is a small dataset. The classifier
    may not generalise to power dynamics outside the variation axes explicitly
