@@ -27,6 +27,8 @@ secrets/
 # Models and non-public data
 models/private/
 data/private/
+data/scenarios/
+data/models/
 *.onnx
 *.pt
 *.pth
