@@ -38,23 +38,12 @@ import sys
 from typing import Any
 
 # ---------------------------------------------------------------------------
-# Frozen feature order (contract Section 6)
+# Frozen feature order — imported from the single authoritative definition
+# in train_power_risk_model.  Importing that module is side-effect-free:
+# it defines constants and functions only; the __main__ block is guarded.
 # ---------------------------------------------------------------------------
 
-FEATURE_ORDER: list[str] = [
-    "soc_latest",
-    "soc_mean",
-    "soc_min",
-    "soc_slope",
-    "voltage_latest",
-    "voltage_min",
-    "voltage_slope",
-    "solar_current_mean",
-    "solar_current_slope",
-    "payload_draw_mean",
-    "payload_draw_max",
-    "high_draw_fraction",
-]
+from backend.scripts.train_power_risk_model import FEATURE_ORDER  # noqa: E402
 
 # ---------------------------------------------------------------------------
 # Thresholds
@@ -211,6 +200,32 @@ def evaluate_power_risk_model(
         print(f"HARD FAIL: scenario-ID leakage violations={leakage}", file=sys.stderr)
         sys.exit(1)
 
+    # --- Hard check: exact class counts per split ---
+    train_pos = sum(1 for s in train_scenarios if s["power_constraint_breach_within_24h"] == 1)
+    train_neg = len(train_scenarios) - train_pos
+    val_pos   = sum(1 for s in val_scenarios   if s["power_constraint_breach_within_24h"] == 1)
+    val_neg   = len(val_scenarios) - val_pos
+    test_pos  = sum(1 for s in test_scenarios  if s["power_constraint_breach_within_24h"] == 1)
+    test_neg  = len(test_scenarios) - test_pos
+
+    class_errors: list[str] = []
+    if train_pos != 90 or train_neg != 90:
+        class_errors.append(
+            f"HARD FAIL: train class counts pos={train_pos}/neg={train_neg}, expected 90/90"
+        )
+    if val_pos != 30 or val_neg != 30:
+        class_errors.append(
+            f"HARD FAIL: val class counts pos={val_pos}/neg={val_neg}, expected 30/30"
+        )
+    if test_pos != 30 or test_neg != 30:
+        class_errors.append(
+            f"HARD FAIL: test class counts pos={test_pos}/neg={test_neg}, expected 30/30"
+        )
+    if class_errors:
+        for e in class_errors:
+            print(e, file=sys.stderr)
+        sys.exit(1)
+
     # --- Hard check: breach eligibility in positive test examples ---
     breach_violations = 0
     for s in test_scenarios:
@@ -291,15 +306,7 @@ def evaluate_power_risk_model(
     precision, recall, f1 = _precision_recall_f1(y_test, y_pred)
     cm = _confusion_matrix(y_test, y_pred)
 
-    # Label balance per split
-    test_pos = sum(1 for v in y_test if v == 1)
-    test_neg = len(y_test) - test_pos
-    train_pos = sum(1 for s in train_scenarios
-                    if s["power_constraint_breach_within_24h"] == 1)
-    train_neg = len(train_scenarios) - train_pos
-    val_pos   = sum(1 for s in val_scenarios
-                    if s["power_constraint_breach_within_24h"] == 1)
-    val_neg   = len(val_scenarios) - val_pos
+    # (train_pos/neg, val_pos/neg, test_pos/neg already computed and validated above)
 
     # -----------------------------------------------------------------------
     # 5. Contract gate pass/fail

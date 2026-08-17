@@ -94,15 +94,25 @@ def _check_breach_eligibility(scenario: dict[str, Any]) -> bool:
 
 
 def _extract_feature_vector(scenario: dict[str, Any]) -> list[float]:
-    """Return a length-12 feature vector in FEATURE_ORDER from scenario["history"]."""
+    """Return a length-12 feature vector in FEATURE_ORDER from scenario["history"].
+
+    Raises
+    ------
+    ValueError
+        If the keys returned by extract_features do not exactly match
+        FEATURE_ORDER (wrong set or wrong order).
+    """
     from backend.app.features import extract_features  # noqa: PLC0415
 
     feat_dict = extract_features(scenario["history"])
 
-    # Validate all 12 keys are present and in the correct frozen order
-    if list(feat_dict.keys()) != FEATURE_ORDER:
-        # Re-map via frozen order to be safe
-        pass
+    keys_actual = list(feat_dict.keys())
+    if keys_actual != FEATURE_ORDER:
+        raise ValueError(
+            f"Feature order mismatch in scenario {scenario.get('scenario_id', '?')}.\n"
+            f"  Expected: {FEATURE_ORDER}\n"
+            f"  Got:      {keys_actual}"
+        )
     return [feat_dict[k] for k in FEATURE_ORDER]
 
 
@@ -165,9 +175,13 @@ def train_power_risk_model(
     -------
     dict with keys:
         selected_c, val_roc_auc_by_c, train_count, val_count, test_count,
-        train_pos, train_neg, val_pos, val_neg, test_pos, test_neg,
+        train_pos, train_neg, val_pos, val_neg,
         leakage_count, breach_eligibility_violations,
         model_path
+
+    Note: test labels, probabilities, and metrics are deliberately excluded.
+    They belong to the evaluation stage (evaluate_power_risk_model.py).
+    The test split is verified for count and ID-separation only.
     """
     # -----------------------------------------------------------------------
     # 1. Generate corpus
@@ -195,16 +209,13 @@ def train_power_risk_model(
     leakage = len(train_ids & val_ids) + len(train_ids & test_ids) + len(val_ids & test_ids)
     assert leakage == 0, f"Leakage violations: {leakage}"
 
-    # Verify label balance
+    # Verify train/val label balance (test labels are not inspected here)
     train_pos = sum(1 for s in train_scenarios if s["power_constraint_breach_within_24h"] == 1)
     train_neg = len(train_scenarios) - train_pos
     val_pos   = sum(1 for s in val_scenarios   if s["power_constraint_breach_within_24h"] == 1)
     val_neg   = len(val_scenarios) - val_pos
-    test_pos  = sum(1 for s in test_scenarios  if s["power_constraint_breach_within_24h"] == 1)
-    test_neg  = len(test_scenarios) - test_pos
     assert train_pos == 90 and train_neg == 90, f"train balance: {train_pos}/{train_neg}"
     assert val_pos == 30   and val_neg == 30,   f"val balance: {val_pos}/{val_neg}"
-    assert test_pos == 30  and test_neg == 30,  f"test balance: {test_pos}/{test_neg}"
 
     # Verify breach eligibility for positive examples in train+val
     breach_violations = 0
@@ -285,8 +296,6 @@ def train_power_risk_model(
         "train_neg":                train_neg,
         "val_pos":                  val_pos,
         "val_neg":                  val_neg,
-        "test_pos":                 test_pos,
-        "test_neg":                 test_neg,
         "leakage_count":            leakage,
         "breach_eligibility_violations": breach_violations,
         "model_path":               save_path,

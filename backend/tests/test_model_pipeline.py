@@ -8,6 +8,7 @@ M03  One scenario → exactly one 12-element feature vector.
 M04  Feature extraction uses only scenario["history"].
 M05  Forbidden fields (scenario_id, split, breach_detail, etc.) are never used.
 M06  Future data is excluded from feature extraction.
+M06b Feature-order mismatch in _extract_feature_vector raises ValueError.
 M07  Exact train/validation/test counts (180/60/60) with seed=42.
 M08  Exact label balance per split (90+90 / 30+30 / 30+30).
 M09  Zero scenario-ID overlap between splits.
@@ -179,6 +180,42 @@ def test_M06_future_data_excluded() -> None:
 
 
 # ---------------------------------------------------------------------------
+# M06b — Feature-order mismatch raises ValueError
+# ---------------------------------------------------------------------------
+
+def test_M06b_feature_order_mismatch_raises_value_error() -> None:
+    """_extract_feature_vector must raise ValueError if extract_features returns
+    keys in an unexpected order or with unexpected names.
+
+    Strategy: monkeypatch extract_features inside the features module to return
+    a dict with one key renamed, then call _extract_feature_vector and confirm
+    that ValueError is raised with a meaningful message.
+    """
+    import backend.app.features as feat_mod  # noqa: PLC0415
+    from backend.scripts.generate_scenarios import generate_training_corpus  # noqa: PLC0415
+
+    m = _import_train()
+    corpus   = generate_training_corpus(seed=42)
+    scenario = corpus[0]
+
+    original_extract = feat_mod.extract_features
+
+    def _bad_extract(samples):
+        result = original_extract(samples)
+        # Rename the last key to break the order contract
+        keys = list(result.keys())
+        keys[-1] = "WRONG_KEY"
+        return dict(zip(keys, result.values()))
+
+    feat_mod.extract_features = _bad_extract
+    try:
+        with pytest.raises(ValueError, match="Feature order mismatch"):
+            m._extract_feature_vector(scenario)
+    finally:
+        feat_mod.extract_features = original_extract
+
+
+# ---------------------------------------------------------------------------
 # M07 — Exact split counts
 # ---------------------------------------------------------------------------
 
@@ -342,27 +379,55 @@ def test_M14_selected_c_is_approved_candidate() -> None:
 # ---------------------------------------------------------------------------
 
 def test_M15_hyperparameter_selection_uses_only_validation() -> None:
-    """Verify that C_CANDIDATES are evaluated against validation ROC-AUC values."""
+    """_roc_auc_score is called once per C candidate using only validation labels.
+
+    Strategy: monkeypatch _roc_auc_score inside the train module to record
+    every (y_true, y_prob) call, then verify that:
+    - it was called exactly len(C_CANDIDATES) times (once per candidate);
+    - each call's y_true contains exactly the validation labels (30 pos / 30 neg);
+    - the selected C is the one whose recorded AUC was highest (ties → smallest C).
+    """
+    from backend.scripts.generate_scenarios import generate_training_corpus  # noqa: PLC0415
+
     m = _import_train()
-    with tempfile.TemporaryDirectory() as tmpdir:
-        model_path = os.path.join(tmpdir, "model.joblib")
-        summary = m.train_power_risk_model(save_path=model_path)
-
-    # val_roc_auc_by_c must have one entry per C candidate
-    assert set(summary["val_roc_auc_by_c"].keys()) == set(m.C_CANDIDATES), (
-        "val_roc_auc_by_c keys do not match C_CANDIDATES"
+    corpus   = generate_training_corpus(seed=42)
+    val_scen = [s for s in corpus if s["split"] == "validation"]
+    expected_val_labels = sorted(
+        [s["power_constraint_breach_within_24h"] for s in val_scen]
     )
 
-    # Selected C must be the one with highest val AUC
-    # (ties go to smallest C, which is handled in training)
-    best_c = max(
-        m.C_CANDIDATES,
-        key=lambda c: (summary["val_roc_auc_by_c"][c], -c),
+    calls: list[tuple[list[int], list[float]]] = []
+    original_roc = m._roc_auc_score
+
+    def _recording_roc(y_true, y_prob):
+        calls.append((list(y_true), list(y_prob)))
+        return original_roc(y_true, y_prob)
+
+    m._roc_auc_score = _recording_roc
+    try:
+        with tempfile.TemporaryDirectory() as tmpdir:
+            model_path = os.path.join(tmpdir, "model.joblib")
+            summary = m.train_power_risk_model(save_path=model_path)
+    finally:
+        m._roc_auc_score = original_roc
+
+    # Exactly one call per C candidate
+    assert len(calls) == len(m.C_CANDIDATES), (
+        f"Expected {len(m.C_CANDIDATES)} _roc_auc_score calls, got {len(calls)}"
     )
-    assert summary["selected_c"] == best_c, (
-        f"selected_c={summary['selected_c']}, expected {best_c} "
-        f"based on val_roc_auc_by_c={summary['val_roc_auc_by_c']}"
-    )
+
+    # Every call used the validation labels (sorted match)
+    for i, (y_true, _) in enumerate(calls):
+        assert sorted(y_true) == expected_val_labels, (
+            f"Call {i}: y_true does not match validation labels.\n"
+            f"  Got sorted:      {sorted(y_true)}\n"
+            f"  Expected sorted: {expected_val_labels}"
+        )
+
+    # val_roc_auc_by_c present and selected C is the one with highest val AUC
+    assert set(summary["val_roc_auc_by_c"].keys()) == set(m.C_CANDIDATES)
+    best_c = max(m.C_CANDIDATES, key=lambda c: (summary["val_roc_auc_by_c"][c], -c))
+    assert summary["selected_c"] == best_c
 
 
 # ---------------------------------------------------------------------------
@@ -370,15 +435,22 @@ def test_M15_hyperparameter_selection_uses_only_validation() -> None:
 # ---------------------------------------------------------------------------
 
 def test_M16_final_training_uses_240_examples() -> None:
-    """The final pipeline is fitted on train + val = 240 scenarios."""
+    """The fitted scaler's n_samples_seen_ must equal exactly 240."""
+    import joblib  # noqa: PLC0415
+
     m = _import_train()
     with tempfile.TemporaryDirectory() as tmpdir:
         model_path = os.path.join(tmpdir, "model.joblib")
         summary = m.train_power_risk_model(save_path=model_path)
+        pipeline = joblib.load(model_path)
 
-    assert summary["train_count"] + summary["val_count"] == 240, (
-        f"train+val={summary['train_count']+summary['val_count']}, expected 240"
+    # StandardScaler stores the number of samples it was fitted on
+    n_seen = pipeline.named_steps["scaler"].n_samples_seen_
+    assert n_seen == 240, (
+        f"Scaler fitted on {n_seen} samples, expected 240 (train+val)"
     )
+    # Sanity-check the reported counts too
+    assert summary["train_count"] + summary["val_count"] == 240
 
 
 # ---------------------------------------------------------------------------
@@ -386,19 +458,49 @@ def test_M16_final_training_uses_240_examples() -> None:
 # ---------------------------------------------------------------------------
 
 def test_M17_test_data_excluded_from_fitting() -> None:
-    """train_power_risk_model must not use test split for fitting or selection."""
+    """_build_matrices must receive only train/val scenarios — never test scenarios.
+
+    Strategy: monkeypatch _build_matrices inside the train module and record
+    which scenario_ids it is called with.  None of the recorded IDs may belong
+    to the test split.
+    """
+    from backend.scripts.generate_scenarios import generate_training_corpus  # noqa: PLC0415
+
     m = _import_train()
+    corpus    = generate_training_corpus(seed=42)
+    test_ids  = {s["scenario_id"] for s in corpus if s["split"] == "test"}
+
+    seen_ids: set[str] = set()
+    original_build = m._build_matrices
+
+    def _recording_build(scenarios):
+        for s in scenarios:
+            seen_ids.add(s["scenario_id"])
+        return original_build(scenarios)
+
+    m._build_matrices = _recording_build
+    try:
+        with tempfile.TemporaryDirectory() as tmpdir:
+            model_path = os.path.join(tmpdir, "model.joblib")
+            m.train_power_risk_model(save_path=model_path)
+    finally:
+        m._build_matrices = original_build
+
+    leaked = seen_ids & test_ids
+    assert not leaked, (
+        f"_build_matrices was called with {len(leaked)} test scenario(s): "
+        f"{sorted(leaked)[:5]}{'...' if len(leaked) > 5 else ''}"
+    )
+
+    # Summary must not contain any test-label fields
     with tempfile.TemporaryDirectory() as tmpdir:
         model_path = os.path.join(tmpdir, "model.joblib")
         summary = m.train_power_risk_model(save_path=model_path)
-
-    # The summary only reports test_count; it does not include test metrics,
-    # which proves that test labels were never used during training.
-    assert "test_count" in summary
-    assert summary["test_count"] == 60
-    # No test metrics in summary
+    assert "test_pos"    not in summary
+    assert "test_neg"    not in summary
     assert "test_roc_auc" not in summary
     assert "test_recall"  not in summary
+    assert summary.get("test_count") == 60
 
 
 # ---------------------------------------------------------------------------
@@ -406,6 +508,10 @@ def test_M17_test_data_excluded_from_fitting() -> None:
 # ---------------------------------------------------------------------------
 
 def test_M18_probabilities_finite_and_bounded() -> None:
+    """Probabilities from the fitted pipeline are finite and in [0.0, 1.0].
+
+    Uses only validation scenarios — never the held-out test split.
+    """
     import joblib                                                              # noqa: PLC0415
     from backend.scripts.generate_scenarios import generate_training_corpus   # noqa: PLC0415
     from backend.app.features import extract_features                          # noqa: PLC0415
@@ -417,9 +523,11 @@ def test_M18_probabilities_finite_and_bounded() -> None:
         pipeline = joblib.load(model_path)
 
     corpus = generate_training_corpus(seed=42)
-    test_scenarios = [s for s in corpus if s["split"] == "test"]
+    # Use validation scenarios — already inspected during training, not held-out test
+    val_scenarios = [s for s in corpus if s["split"] == "validation"]
+    assert len(val_scenarios) == 60, "Expected 60 validation scenarios"
 
-    for s in test_scenarios:
+    for s in val_scenarios:
         vec = [extract_features(s["history"])[k] for k in _EXPECTED_FEATURE_ORDER]
         prob_matrix = pipeline.predict_proba([vec])
         p = float(prob_matrix[0][1])
@@ -511,29 +619,47 @@ def test_M21_generated_paths_are_gitignored() -> None:
 # ---------------------------------------------------------------------------
 
 def test_M22_no_import_time_side_effects(tmp_path) -> None:
-    """Importing train/evaluate modules must not create files or train models."""
-    import importlib  # noqa: PLC0415
+    """Importing train/evaluate modules must not create files or train models.
 
-    original_files_before = set(tmp_path.iterdir())
+    Strategy: snapshot the set of files in the model and scenarios directories
+    before and after import, and assert the snapshots are identical.
+    """
+    repo_root  = os.path.normpath(os.path.join(os.path.dirname(__file__), "..", ".."))
+    models_dir = os.path.join(repo_root, "data", "models")
+    scen_dir   = os.path.join(repo_root, "data", "scenarios")
 
-    # Force re-import by clearing from sys.modules if already cached
+    def _snapshot(directory: str) -> frozenset[str]:
+        """Return frozenset of absolute file paths inside directory, or empty set."""
+        if not os.path.isdir(directory):
+            return frozenset()
+        return frozenset(
+            os.path.join(root, f)
+            for root, _, files in os.walk(directory)
+            for f in files
+        )
+
+    snap_models_before = _snapshot(models_dir)
+    snap_scen_before   = _snapshot(scen_dir)
+
+    # Force re-import by clearing cached modules
     for mod_name in list(sys.modules.keys()):
         if "train_power_risk_model" in mod_name or "evaluate_power_risk_model" in mod_name:
             del sys.modules[mod_name]
 
-    import backend.scripts.train_power_risk_model       # noqa: PLC0415, F401
-    import backend.scripts.evaluate_power_risk_model    # noqa: PLC0415, F401
+    import backend.scripts.train_power_risk_model     # noqa: PLC0415, F401
+    import backend.scripts.evaluate_power_risk_model  # noqa: PLC0415, F401
 
-    # No files should have been created in the model directory during import
-    models_dir = os.path.join(
-        os.path.dirname(__file__), "..", "..", "data", "models"
+    snap_models_after = _snapshot(models_dir)
+    snap_scen_after   = _snapshot(scen_dir)
+
+    assert snap_models_after == snap_models_before, (
+        "Import created files in data/models/: "
+        + str(snap_models_after - snap_models_before)
     )
-    # This directory should NOT exist due to import alone (it's gitignored)
-    # If it does exist (from a prior run), we just confirm import doesn't create new files.
-    # The key check is that importing does not call train or evaluate.
-    # We can verify by checking that neither module calls train at import time.
-    # (Indirect: if training were called, it would take several seconds and create a file.)
-    assert True  # Reaching here without file creation or exceptions is the test
+    assert snap_scen_after == snap_scen_before, (
+        "Import created files in data/scenarios/: "
+        + str(snap_scen_after - snap_scen_before)
+    )
 
 
 # ---------------------------------------------------------------------------

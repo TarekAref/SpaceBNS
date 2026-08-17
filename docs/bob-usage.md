@@ -71,7 +71,7 @@ Copy this section for each meaningful Bob-assisted task.
 
 ### Task: Train and evaluate the first power-risk AI prototype
 
-- **Date (UTC):** 2026-08-16
+- **Date (UTC):** 2026-08-17
 - **Developer:** Tarek Aref
 - **Bob mode/workflow:** IBM Bob Agent mode — task authorized and scoped by Tarek; Bob acted as primary implementation tool
 - **Goal:** Train the first SpaceBNS power-risk binary classifier and evaluate it once against the untouched synthetic held-out test split, within the boundaries of the approved implementation contract.
@@ -84,24 +84,25 @@ Copy this section for each meaningful Bob-assisted task.
   - `docs/bob-usage.md` — updated (this entry)
   - `data/models/power_risk_classifier.joblib` — generated, git-ignored, not committed
   - `data/scenarios/power_scenarios.json` — not generated as a file; corpus is generated in-memory at train/evaluate time
+- **Isolation boundaries:** The test split was held out from all model fitting and hyperparameter selection. C was selected using only validation ROC-AUC; the final pipeline was fitted on train+validation (240 scenarios) only. The evaluation script (`evaluate_power_risk_model.py`) accessed test scenario IDs, schema, sample counts, label balance, and breach-eligibility fields as hard validation checks before computing metrics — schema and count checks on the test split are considered pre-computation validation, not post-hoc tuning. The evaluation script was executed exactly once.
 - **Bob contribution:** Designed and implemented the full training and evaluation pipeline strictly within the approved contract. Key implementation decisions:
   - Feature extraction uses `extract_features(scenario["history"])` exclusively; future data is never accessed.
-  - `FEATURE_ORDER` constant (12 features, frozen order from contract Section 6) defined once and referenced throughout.
+  - `FEATURE_ORDER` constant (12 features, frozen order from contract Section 6) defined once in `train_power_risk_model.py` and imported by `evaluate_power_risk_model.py`.
   - C-candidates `[0.01, 0.1, 1.0, 10.0]` evaluated on validation split only; ties broken by smallest C.
   - Final pipeline trained on combined train+validation (180+60 = 240 scenarios).
-  - Hard validation checks (split counts, leakage, breach eligibility, feature count/order, finite values, finite probabilities) gate metric reporting in the evaluate script.
+  - Hard validation checks (split counts, class balance, leakage, breach eligibility, feature count/order, finite values, finite probabilities) gate metric reporting in the evaluate script.
   - Convergence warnings treated as errors via `ConvergenceWarning` filter (contract requirement).
   - ROC-AUC computed using the Wilcoxon-Mann-Whitney U statistic (numerically equivalent to trapezoidal AUC, no scipy dependency).
-  - 23 focused tests covering all required contract requirements (M01–M23).
+  - 23 focused tests (M01–M23) plus M06b.
   - Iterative fix: initial `UserWarning` filter triggered on unrelated scipy solver internal warning; corrected to use `ConvergenceWarning` only. Initial custom ROC-AUC had an off-by-one accumulation bug; replaced with WMW U-statistic formulation and verified against sklearn reference.
-- **Human review and corrections:** Tarek approved the full task scope and authorized the single held-out test evaluation. Final GitHub-bridge code review follows this push; no human code review has occurred prior to the push.
-- **Validation performed:**
+- **Human review and corrections:** Tarek approved the full task scope and authorized the single held-out test evaluation. GitHub-bridge review (commit `34fde7a`) identified isolation-test weaknesses: tests M15, M16, M17, M18 and M22 were too weak or used incorrect data; `_extract_feature_vector` silently passed on feature-order mismatch; `FEATURE_ORDER` was duplicated; training read test labels unnecessarily. A correction task was authorized by Tarek and executed in commit `fix(backend): strengthen model evaluation isolation`. The model, corpus, metrics, and reported results were not changed.
+- **Validation performed (original commit `34fde7a`):**
   - `pip check` — no broken requirements
   - 27 focused model-pipeline tests (M01–M23) — all passed
   - 3583 total backend tests — all passed (0 failures)
-  - `git diff --check` — exit 0 (no whitespace issues)
+  - `git diff --check` — exit 0
   - Artifact paths verified as git-ignored via `git check-ignore`
-- **Held-out synthetic test results (evaluated once, seed=42 corpus, C=1.0):**
+- **Held-out synthetic test results (evaluated once in commit `34fde7a`, seed=42 corpus, C=1.0; not re-evaluated in the correction commit):**
   - ROC-AUC: 1.000 (gate ≥ 0.80 ✓)
   - Recall (label=1): 1.000 (gate ≥ 0.75 ✓)
   - Precision (label=1): 0.9375 (gate ≥ 0.65 ✓)
@@ -117,7 +118,29 @@ Copy this section for each meaningful Bob-assisted task.
   - `breach_probability` is NOT a real-spacecraft failure probability.
   - Model is `NOT_FLIGHT_QUALIFIED`. `command_authority: "NONE"`. All outputs are advisory and simulation-only.
   - No output from this system constitutes a spacecraft command or authorisation for autonomous action. All outputs require human review before any operational decision.
-- **Result:** All 7 contract gates passed on first and only test evaluation. Training pipeline, evaluation script, and 23 focused tests committed to `bob/mvp-build`. No tuning against the test set occurred.
+- **Result:** All 7 contract gates passed on first and only test evaluation. Training pipeline, evaluation script, and focused tests committed to `bob/mvp-build`. No tuning against the test set occurred. Isolation weaknesses corrected in follow-up commit per GitHub-bridge review.
+
+---
+
+### Task: Strengthen model evaluation isolation (correction)
+
+- **Date (UTC):** 2026-08-17
+- **Developer:** Tarek Aref
+- **Bob mode/workflow:** IBM Bob Agent mode — correction task authorized by Tarek following GitHub-bridge review of commit `34fde7a`
+- **Goal:** Address isolation and test-quality findings from the GitHub-bridge review without changing the trained model, corpus, features, labels, splits, thresholds, selected C, or reported metrics.
+- **Prompt summary:** (1) Remove test-label inspection from `train_power_risk_model.py` — training should not read test labels, `test_pos`, or `test_neg`. (2) Fail closed on feature-order mismatch in `_extract_feature_vector()` instead of silently passing. (3) Define `FEATURE_ORDER` once in the train module and import it in the evaluate module. (4) Add hard class-count validation for all three splits in `evaluate_power_risk_model.py`. (5) Strengthen tests M15 (monkeypatch `_roc_auc_score` to verify validation-only labels), M16 (check scaler's `n_samples_seen_ == 240`), M17 (monkeypatch `_build_matrices` to verify test IDs never passed), M18 (use validation not test scenarios), M22 (snapshot directories before/after import), and add M06b (feature-order mismatch raises `ValueError`). (6) Correct the bob-usage.md entry date and review record.
+- **Files affected:**
+  - `backend/scripts/train_power_risk_model.py` — removed `test_pos`/`test_neg` label reads; `_extract_feature_vector` now raises `ValueError` on mismatch
+  - `backend/scripts/evaluate_power_risk_model.py` — removed duplicate `FEATURE_ORDER`, now imported from train module; added class-count hard checks for all three splits
+  - `backend/tests/test_model_pipeline.py` — strengthened M15, M16, M17, M18, M22; added M06b
+  - `docs/bob-usage.md` — updated (this entry)
+- **Bob contribution:** Implemented all five code corrections and updated documentation per the approved correction scope. The trained model, joblib artifact, corpus, features, thresholds, selected C, and all reported metrics are unchanged.
+- **Human review and corrections:** Tarek authorized the correction scope. No model retraining or re-evaluation of the held-out test split was performed. GitHub-bridge review of this correction commit follows the push.
+- **Validation performed:**
+  - `pip check` — no broken requirements
+  - Focused model-pipeline tests — all passed (reported after test run)
+  - Full backend test suite — all passed (reported after test run)
+  - `git diff --check` — exit 0
 
 ---
 
