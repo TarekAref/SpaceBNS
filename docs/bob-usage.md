@@ -122,6 +122,37 @@ Copy this section for each meaningful Bob-assisted task.
 
 ---
 
+### Task: Implement four-layer power-risk prediction API
+
+- **Date (UTC):** 2026-08-18–20
+- **Developer:** Tarek Aref
+- **Bob mode/workflow:** IBM Bob Agent mode — task authorized and scoped by Tarek; Bob acted as primary implementation tool
+- **Goal:** Implement the complete four-layer prediction API (L1 AI, L2 deterministic projection, L3 safety thresholds, L4 advisory) as specified in the approved contract, wire it into `main.py`, write the full contract test suite, and add NumPy/SciPy version pins.
+- **Prompt summary:** Implement `prediction_service.py` (run_prediction, degraded mode, L2 projection independent of AI availability), `safety.py` (global exception handlers, INVALID_SAMPLE_SCHEMA, EMPTY_WINDOW), and `history.json` (72-sample mock). Wire routes, model load, CORS POST, and global handlers into `main.py`. Write `test_power_risk_prediction.py` covering P01–P38 contract tests plus fix1–fix5 and fixA1–fixA6 regression tests. Pin `numpy==2.2.6` and `scipy==1.15.3` in `requirements.txt`: local testing with the newer unpinned NumPy 2.5.2 and SciPy 1.18.0 produced a SciPy OptimizeWarning: 'Unknown solver options: iprint'. Pinning the compatibility-tested NumPy 2.2.6 and SciPy 1.15.3 combination eliminated the warning while pip check and all tests passed.
+- **Files affected:**
+  - `backend/app/main.py` — new routes, model load, CORS POST, global exception handlers
+  - `backend/app/prediction_service.py` — created (new)
+  - `backend/app/safety.py` — created (new)
+  - `data/mock/history.json` — created (new)
+  - `backend/tests/test_power_risk_prediction.py` — created (new); 99 tests
+  - `backend/requirements.txt` — added `numpy==2.2.6` and `scipy==1.15.3`
+  - `docs/power-risk-contract.md` — synchronised with implemented state across multiple correction passes
+  - `docs/bob-usage.md` — updated (this entry)
+- **Bob contribution:** Implemented the complete prediction service and safety handler, designed the degraded-mode L2 independence path, wrote all test fixtures and regression tests, and applied successive contract alignment corrections identified by GitHub-bridge audits. NumPy/SciPy pins were added after local testing with the newer unpinned NumPy 2.5.2 and SciPy 1.18.0 produced a SciPy OptimizeWarning: 'Unknown solver options: iprint'; pinning the compatibility-tested NumPy 2.2.6 and SciPy 1.15.3 combination eliminated the warning while pip check and all tests passed.
+- **Human review and corrections:** Tarek authorized all scope and reviewed all diffs. Three successive GitHub-bridge audit passes (correction-only, schema-alignment, and documentation consistency) were completed; each pass was authorized by Tarek before execution.
+- **Validation performed:**
+  - `pip check` — no broken requirements
+  - 99 focused prediction tests — all passed
+  - 3683+ total backend tests — all passed
+  - `git diff --check` — no whitespace errors (only autocrlf normalisation warnings)
+- **Scientific and safety disclosures:**
+  - `breach_probability` is NOT a real-spacecraft failure probability.
+  - Model is `NOT_FLIGHT_QUALIFIED`. `command_authority: "NONE"`. All outputs are advisory and simulation-only.
+  - Endpoints are locally tested; not deployed or wired to the frontend as of this entry.
+- **Result:** Four-layer prediction API fully implemented and tested. All contract validation gates confirmed. API not yet deployed.
+
+---
+
 ### Task: Strengthen model evaluation isolation (correction)
 
 - **Date (UTC):** 2026-08-17
@@ -135,12 +166,34 @@ Copy this section for each meaningful Bob-assisted task.
   - `backend/tests/test_model_pipeline.py` — strengthened M15, M16, M17, M18, M22; added M06b
   - `docs/bob-usage.md` — updated (this entry)
 - **Bob contribution:** Implemented all five code corrections and updated documentation per the approved correction scope. The trained model, joblib artifact, corpus, features, thresholds, selected C, and all reported metrics are unchanged.
-- **Human review and corrections:** Tarek authorized the correction scope. No model retraining or re-evaluation of the held-out test split was performed. GitHub-bridge review of this correction commit follows the push.
+- **Human review and corrections:** Tarek authorized the correction scope. No model retraining or re-evaluation of the held-out test split was performed. GitHub-bridge review of commit `5b9e160` passed on 2026-08-17.
 - **Validation performed:**
   - `pip check` — no broken requirements
   - Focused model-pipeline tests — all passed (reported after test run)
   - Full backend test suite — all passed (reported after test run)
   - `git diff --check` — exit 0
+
+### Task: Final contract-alignment corrections (power-risk prediction service)
+
+- **Date (UTC):** 2026-08-18–20
+- **Developer:** Tarek Aref
+- **Bob mode/workflow:** IBM Bob Agent mode — correction task authorized by Tarek following GitHub-bridge audit
+- **Goal:** Correct five code defects and one stale docstring identified by the audit, synchronise the contract document with implemented reality, and add regression tests proving each correction.
+- **Prompt summary:** (1) Update `_PROBABILITY_NOTE` from "180 training scenarios" to the accurate 240-scenario final-fit statement. (2) Make L2 deterministic projection available in degraded mode independently of AI inference. (3) Ensure POST `{}` returns 422 `EMPTY_WINDOW` with the safety envelope. (4) Extend `_validate_samples` to enforce all 8 required raw telemetry fields including the three non-ML fields. (5) Synchronise `docs/power-risk-contract.md` with the implemented state: status, `generate_training_corpus(seed=42)`, 240-scenario final fit, slope units (per hour), `SYNTH-DEMO-PUBLIC-001`, 0.79 exceeds 0.70, file plan, and cautious latency/probability wording. (6) Remove the stale ±1-second tolerance claim from `_validate_samples` docstring.
+- **Files affected:**
+  - `backend/app/prediction_service.py` — `_PROBABILITY_NOTE`, `_validate_samples`, degraded-mode L2 path
+  - `backend/app/safety.py` — `RequestValidationError` handler: POST `{}` → `EMPTY_WINDOW`
+  - `backend/tests/test_power_risk_prediction.py` — 18 new regression tests (fixA1–fixA6)
+  - `docs/power-risk-contract.md` — status, corpus section, model rationale, slope units, file plan, response examples, limitation 2
+  - `docs/bob-usage.md` — this entry
+- **Bob contribution:** Diagnosed all six defects from the audit description, implemented the minimal targeted corrections, and wrote focused regression tests. No features, labels, thresholds, model type, dataset splits, or policy rules were changed. Successive documentation consistency passes (v4 audit) identified only documentation items; all executable code passed the v4 audit without further code changes.
+- **Human review and corrections:** Tarek authorized the correction scope and confirmed that the v4 executable-code audit passed with only documentation consistency corrections remaining.
+- **Validation performed:**
+  - `pip check` — no broken requirements
+  - 99 focused prediction tests — all passed
+  - 3683 total backend tests — all passed
+  - `git diff --check` — only autocrlf normalisation warnings (no whitespace errors)
+- **Result:** All six defects corrected; 18 regression tests added; contract document synchronized with the implemented state.
 
 ---
 

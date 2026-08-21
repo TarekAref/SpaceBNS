@@ -1,0 +1,736 @@
+{
+  "metadata": {
+    "data_source": "SYNTHETIC",
+    "prototype_status": "NOT_FLIGHT_QUALIFIED",
+    "command_authority": "NONE",
+    "policy_decision": "PERMITTED_FOR_SIMULATION_ONLY",
+    "description": "Static 72-sample public mock history for GET /api/v1/mock/power-risk-prediction. Hand-authored synthetic data; not derived from the 300-scenario training corpus (seed=42). Scenario ID is independent of all training, validation, and test splits.",
+    "scenario_id": "SYNTH-DEMO-PUBLIC-001",
+    "cadence_minutes": 5,
+    "sample_count": 72,
+    "window_hours": 6.0
+  },
+  "scenario_id": "SYNTH-DEMO-PUBLIC-001",
+  "samples": [
+    {
+      "timestamp": "2026-08-12T14:00:00Z",
+      "solar_array_current_a": 7.787,
+      "payload_power_draw_w": 32.0,
+      "bus_voltage_v": 28.19,
+      "battery_soc_percent": 55.0,
+      "command_activity": "NOMINAL_ATTITUDE_HOLD",
+      "communications_status": "NO_CONTACT_WINDOW",
+      "image_utility_score": 0.7
+    },
+    {
+      "timestamp": "2026-08-12T14:05:00Z",
+      "solar_array_current_a": 7.783,
+      "payload_power_draw_w": 33.29,
+      "bus_voltage_v": 28.191,
+      "battery_soc_percent": 55.072,
+      "command_activity": "NOMINAL_ATTITUDE_HOLD",
+      "communications_status": "NO_CONTACT_WINDOW",
+      "image_utility_score": 0.7131
+    },
+    {
+      "timestamp": "2026-08-12T14:10:00Z",
+      "solar_array_current_a": 7.778,
+      "payload_power_draw_w": 34.5,
+      "bus_voltage_v": 28.193,
+      "battery_soc_percent": 55.141,
+      "command_activity": "NOMINAL_ATTITUDE_HOLD",
+      "communications_status": "NO_CONTACT_WINDOW",
+      "image_utility_score": 0.726
+    },
+    {
+      "timestamp": "2026-08-12T14:15:00Z",
+      "solar_array_current_a": 7.773,
+      "payload_power_draw_w": 35.54,
+      "bus_voltage_v": 28.194,
+      "battery_soc_percent": 55.205,
+      "command_activity": "NOMINAL_ATTITUDE_HOLD",
+      "communications_status": "NO_CONTACT_WINDOW",
+      "image_utility_score": 0.7388
+    },
+    {
+      "timestamp": "2026-08-12T14:20:00Z",
+      "solar_array_current_a": 7.766,
+      "payload_power_draw_w": 36.33,
+      "bus_voltage_v": 28.195,
+      "battery_soc_percent": 55.261,
+      "command_activity": "NOMINAL_ATTITUDE_HOLD",
+      "communications_status": "NO_CONTACT_WINDOW",
+      "image_utility_score": 0.7513
+    },
+    {
+      "timestamp": "2026-08-12T14:25:00Z",
+      "solar_array_current_a": 7.757,
+      "payload_power_draw_w": 36.83,
+      "bus_voltage_v": 28.196,
+      "battery_soc_percent": 55.308,
+      "command_activity": "NOMINAL_ATTITUDE_HOLD",
+      "communications_status": "NO_CONTACT_WINDOW",
+      "image_utility_score": 0.7634
+    },
+    {
+      "timestamp": "2026-08-12T14:30:00Z",
+      "solar_array_current_a": 7.747,
+      "payload_power_draw_w": 37.0,
+      "bus_voltage_v": 28.196,
+      "battery_soc_percent": 55.343,
+      "command_activity": "NOMINAL_ATTITUDE_HOLD",
+      "communications_status": "NO_CONTACT_WINDOW",
+      "image_utility_score": 0.775
+    },
+    {
+      "timestamp": "2026-08-12T14:35:00Z",
+      "solar_array_current_a": 7.735,
+      "payload_power_draw_w": 36.83,
+      "bus_voltage_v": 28.197,
+      "battery_soc_percent": 55.365,
+      "command_activity": "NOMINAL_ATTITUDE_HOLD",
+      "communications_status": "NO_CONTACT_WINDOW",
+      "image_utility_score": 0.786
+    },
+    {
+      "timestamp": "2026-08-12T14:40:00Z",
+      "solar_array_current_a": 7.721,
+      "payload_power_draw_w": 36.33,
+      "bus_voltage_v": 28.197,
+      "battery_soc_percent": 55.372,
+      "command_activity": "NOMINAL_ATTITUDE_HOLD",
+      "communications_status": "NO_CONTACT_WINDOW",
+      "image_utility_score": 0.7964
+    },
+    {
+      "timestamp": "2026-08-12T14:45:00Z",
+      "solar_array_current_a": 7.705,
+      "payload_power_draw_w": 35.54,
+      "bus_voltage_v": 28.197,
+      "battery_soc_percent": 55.365,
+      "command_activity": "NOMINAL_ATTITUDE_HOLD",
+      "communications_status": "NO_CONTACT_WINDOW",
+      "image_utility_score": 0.8061
+    },
+    {
+      "timestamp": "2026-08-12T14:50:00Z",
+      "solar_array_current_a": 7.685,
+      "payload_power_draw_w": 34.5,
+      "bus_voltage_v": 28.196,
+      "battery_soc_percent": 55.342,
+      "command_activity": "NOMINAL_ATTITUDE_HOLD",
+      "communications_status": "NO_CONTACT_WINDOW",
+      "image_utility_score": 0.8149
+    },
+    {
+      "timestamp": "2026-08-12T14:55:00Z",
+      "solar_array_current_a": 7.663,
+      "payload_power_draw_w": 33.29,
+      "bus_voltage_v": 28.195,
+      "battery_soc_percent": 55.305,
+      "command_activity": "NOMINAL_ATTITUDE_HOLD",
+      "communications_status": "NO_CONTACT_WINDOW",
+      "image_utility_score": 0.8229
+    },
+    {
+      "timestamp": "2026-08-12T15:00:00Z",
+      "solar_array_current_a": 7.638,
+      "payload_power_draw_w": 95.0,
+      "bus_voltage_v": 28.195,
+      "battery_soc_percent": 55.253,
+      "command_activity": "PAYLOAD_IMAGING_ACTIVE",
+      "communications_status": "NO_CONTACT_WINDOW",
+      "image_utility_score": 0.8299
+    },
+    {
+      "timestamp": "2026-08-12T15:05:00Z",
+      "solar_array_current_a": 7.609,
+      "payload_power_draw_w": 96.5,
+      "bus_voltage_v": 28.193,
+      "battery_soc_percent": 55.188,
+      "command_activity": "PAYLOAD_IMAGING_ACTIVE",
+      "communications_status": "NO_CONTACT_WINDOW",
+      "image_utility_score": 0.8359
+    },
+    {
+      "timestamp": "2026-08-12T15:10:00Z",
+      "solar_array_current_a": 7.576,
+      "payload_power_draw_w": 97.6,
+      "bus_voltage_v": 28.192,
+      "battery_soc_percent": 55.111,
+      "command_activity": "PAYLOAD_IMAGING_ACTIVE",
+      "communications_status": "NO_CONTACT_WINDOW",
+      "image_utility_score": 0.841
+    },
+    {
+      "timestamp": "2026-08-12T15:15:00Z",
+      "solar_array_current_a": 7.54,
+      "payload_power_draw_w": 98.0,
+      "bus_voltage_v": 28.19,
+      "battery_soc_percent": 55.025,
+      "command_activity": "PAYLOAD_IMAGING_ACTIVE",
+      "communications_status": "NO_CONTACT_WINDOW",
+      "image_utility_score": 0.8449
+    },
+    {
+      "timestamp": "2026-08-12T15:20:00Z",
+      "solar_array_current_a": 7.501,
+      "payload_power_draw_w": 97.6,
+      "bus_voltage_v": 28.189,
+      "battery_soc_percent": 54.931,
+      "command_activity": "PAYLOAD_IMAGING_ACTIVE",
+      "communications_status": "NO_CONTACT_WINDOW",
+      "image_utility_score": 0.8477
+    },
+    {
+      "timestamp": "2026-08-12T15:25:00Z",
+      "solar_array_current_a": 7.457,
+      "payload_power_draw_w": 96.5,
+      "bus_voltage_v": 28.187,
+      "battery_soc_percent": 54.832,
+      "command_activity": "PAYLOAD_IMAGING_ACTIVE",
+      "communications_status": "NO_CONTACT_WINDOW",
+      "image_utility_score": 0.8494
+    },
+    {
+      "timestamp": "2026-08-12T15:30:00Z",
+      "solar_array_current_a": 7.41,
+      "payload_power_draw_w": 27.0,
+      "bus_voltage_v": 28.185,
+      "battery_soc_percent": 54.73,
+      "command_activity": "NOMINAL_ATTITUDE_HOLD",
+      "communications_status": "NO_CONTACT_WINDOW",
+      "image_utility_score": 0.85
+    },
+    {
+      "timestamp": "2026-08-12T15:35:00Z",
+      "solar_array_current_a": 7.36,
+      "payload_power_draw_w": 27.17,
+      "bus_voltage_v": 28.183,
+      "battery_soc_percent": 54.628,
+      "command_activity": "NOMINAL_ATTITUDE_HOLD",
+      "communications_status": "NO_CONTACT_WINDOW",
+      "image_utility_score": 0.8494
+    },
+    {
+      "timestamp": "2026-08-12T15:40:00Z",
+      "solar_array_current_a": 7.307,
+      "payload_power_draw_w": 27.67,
+      "bus_voltage_v": 28.182,
+      "battery_soc_percent": 54.529,
+      "command_activity": "NOMINAL_ATTITUDE_HOLD",
+      "communications_status": "NO_CONTACT_WINDOW",
+      "image_utility_score": 0.8477
+    },
+    {
+      "timestamp": "2026-08-12T15:45:00Z",
+      "solar_array_current_a": 7.251,
+      "payload_power_draw_w": 28.46,
+      "bus_voltage_v": 28.18,
+      "battery_soc_percent": 54.435,
+      "command_activity": "NOMINAL_ATTITUDE_HOLD",
+      "communications_status": "NO_CONTACT_WINDOW",
+      "image_utility_score": 0.8449
+    },
+    {
+      "timestamp": "2026-08-12T15:50:00Z",
+      "solar_array_current_a": 7.192,
+      "payload_power_draw_w": 29.5,
+      "bus_voltage_v": 28.178,
+      "battery_soc_percent": 54.349,
+      "command_activity": "NOMINAL_ATTITUDE_HOLD",
+      "communications_status": "NO_CONTACT_WINDOW",
+      "image_utility_score": 0.841
+    },
+    {
+      "timestamp": "2026-08-12T15:55:00Z",
+      "solar_array_current_a": 7.133,
+      "payload_power_draw_w": 30.71,
+      "bus_voltage_v": 28.177,
+      "battery_soc_percent": 54.272,
+      "command_activity": "NOMINAL_ATTITUDE_HOLD",
+      "communications_status": "NO_CONTACT_WINDOW",
+      "image_utility_score": 0.8359
+    },
+    {
+      "timestamp": "2026-08-12T16:00:00Z",
+      "solar_array_current_a": 7.072,
+      "payload_power_draw_w": 32.0,
+      "bus_voltage_v": 28.176,
+      "battery_soc_percent": 54.207,
+      "command_activity": "NOMINAL_ATTITUDE_HOLD",
+      "communications_status": "NO_CONTACT_WINDOW",
+      "image_utility_score": 0.8299
+    },
+    {
+      "timestamp": "2026-08-12T16:05:00Z",
+      "solar_array_current_a": 7.012,
+      "payload_power_draw_w": 33.29,
+      "bus_voltage_v": 28.175,
+      "battery_soc_percent": 54.155,
+      "command_activity": "NOMINAL_ATTITUDE_HOLD",
+      "communications_status": "NO_CONTACT_WINDOW",
+      "image_utility_score": 0.8229
+    },
+    {
+      "timestamp": "2026-08-12T16:10:00Z",
+      "solar_array_current_a": 6.952,
+      "payload_power_draw_w": 34.5,
+      "bus_voltage_v": 28.174,
+      "battery_soc_percent": 54.118,
+      "command_activity": "NOMINAL_ATTITUDE_HOLD",
+      "communications_status": "NO_CONTACT_WINDOW",
+      "image_utility_score": 0.8149
+    },
+    {
+      "timestamp": "2026-08-12T16:15:00Z",
+      "solar_array_current_a": 6.894,
+      "payload_power_draw_w": 35.54,
+      "bus_voltage_v": 28.174,
+      "battery_soc_percent": 54.095,
+      "command_activity": "NOMINAL_ATTITUDE_HOLD",
+      "communications_status": "NO_CONTACT_WINDOW",
+      "image_utility_score": 0.8061
+    },
+    {
+      "timestamp": "2026-08-12T16:20:00Z",
+      "solar_array_current_a": 6.839,
+      "payload_power_draw_w": 36.33,
+      "bus_voltage_v": 28.174,
+      "battery_soc_percent": 54.088,
+      "command_activity": "NOMINAL_ATTITUDE_HOLD",
+      "communications_status": "NO_CONTACT_WINDOW",
+      "image_utility_score": 0.7964
+    },
+    {
+      "timestamp": "2026-08-12T16:25:00Z",
+      "solar_array_current_a": 6.788,
+      "payload_power_draw_w": 36.83,
+      "bus_voltage_v": 28.174,
+      "battery_soc_percent": 54.095,
+      "command_activity": "NOMINAL_ATTITUDE_HOLD",
+      "communications_status": "NO_CONTACT_WINDOW",
+      "image_utility_score": 0.786
+    },
+    {
+      "timestamp": "2026-08-12T16:30:00Z",
+      "solar_array_current_a": 6.741,
+      "payload_power_draw_w": 37.0,
+      "bus_voltage_v": 28.174,
+      "battery_soc_percent": 54.117,
+      "command_activity": "NOMINAL_ATTITUDE_HOLD",
+      "communications_status": "CONTACT_WINDOW",
+      "image_utility_score": 0.775
+    },
+    {
+      "timestamp": "2026-08-12T16:35:00Z",
+      "solar_array_current_a": 6.7,
+      "payload_power_draw_w": 36.83,
+      "bus_voltage_v": 28.175,
+      "battery_soc_percent": 54.152,
+      "command_activity": "NOMINAL_ATTITUDE_HOLD",
+      "communications_status": "CONTACT_WINDOW",
+      "image_utility_score": 0.7634
+    },
+    {
+      "timestamp": "2026-08-12T16:40:00Z",
+      "solar_array_current_a": 6.665,
+      "payload_power_draw_w": 36.33,
+      "bus_voltage_v": 28.176,
+      "battery_soc_percent": 54.199,
+      "command_activity": "NOMINAL_ATTITUDE_HOLD",
+      "communications_status": "CONTACT_WINDOW",
+      "image_utility_score": 0.7513
+    },
+    {
+      "timestamp": "2026-08-12T16:45:00Z",
+      "solar_array_current_a": 6.637,
+      "payload_power_draw_w": 35.54,
+      "bus_voltage_v": 28.177,
+      "battery_soc_percent": 54.255,
+      "command_activity": "NOMINAL_ATTITUDE_HOLD",
+      "communications_status": "CONTACT_WINDOW",
+      "image_utility_score": 0.7388
+    },
+    {
+      "timestamp": "2026-08-12T16:50:00Z",
+      "solar_array_current_a": 6.617,
+      "payload_power_draw_w": 34.5,
+      "bus_voltage_v": 28.178,
+      "battery_soc_percent": 54.319,
+      "command_activity": "NOMINAL_ATTITUDE_HOLD",
+      "communications_status": "CONTACT_WINDOW",
+      "image_utility_score": 0.726
+    },
+    {
+      "timestamp": "2026-08-12T16:55:00Z",
+      "solar_array_current_a": 6.604,
+      "payload_power_draw_w": 33.29,
+      "bus_voltage_v": 28.179,
+      "battery_soc_percent": 54.388,
+      "command_activity": "NOMINAL_ATTITUDE_HOLD",
+      "communications_status": "CONTACT_WINDOW",
+      "image_utility_score": 0.7131
+    },
+    {
+      "timestamp": "2026-08-12T17:00:00Z",
+      "solar_array_current_a": 6.6,
+      "payload_power_draw_w": 32.0,
+      "bus_voltage_v": 28.18,
+      "battery_soc_percent": 54.46,
+      "command_activity": "NOMINAL_ATTITUDE_HOLD",
+      "communications_status": "CONTACT_WINDOW",
+      "image_utility_score": 0.7
+    },
+    {
+      "timestamp": "2026-08-12T17:05:00Z",
+      "solar_array_current_a": 6.604,
+      "payload_power_draw_w": 30.71,
+      "bus_voltage_v": 28.182,
+      "battery_soc_percent": 54.532,
+      "command_activity": "NOMINAL_ATTITUDE_HOLD",
+      "communications_status": "NO_CONTACT_WINDOW",
+      "image_utility_score": 0.6869
+    },
+    {
+      "timestamp": "2026-08-12T17:10:00Z",
+      "solar_array_current_a": 6.617,
+      "payload_power_draw_w": 29.5,
+      "bus_voltage_v": 28.183,
+      "battery_soc_percent": 54.601,
+      "command_activity": "NOMINAL_ATTITUDE_HOLD",
+      "communications_status": "NO_CONTACT_WINDOW",
+      "image_utility_score": 0.674
+    },
+    {
+      "timestamp": "2026-08-12T17:15:00Z",
+      "solar_array_current_a": 6.637,
+      "payload_power_draw_w": 28.46,
+      "bus_voltage_v": 28.184,
+      "battery_soc_percent": 54.665,
+      "command_activity": "NOMINAL_ATTITUDE_HOLD",
+      "communications_status": "NO_CONTACT_WINDOW",
+      "image_utility_score": 0.6612
+    },
+    {
+      "timestamp": "2026-08-12T17:20:00Z",
+      "solar_array_current_a": 6.665,
+      "payload_power_draw_w": 27.67,
+      "bus_voltage_v": 28.185,
+      "battery_soc_percent": 54.721,
+      "command_activity": "NOMINAL_ATTITUDE_HOLD",
+      "communications_status": "NO_CONTACT_WINDOW",
+      "image_utility_score": 0.6487
+    },
+    {
+      "timestamp": "2026-08-12T17:25:00Z",
+      "solar_array_current_a": 6.7,
+      "payload_power_draw_w": 27.17,
+      "bus_voltage_v": 28.186,
+      "battery_soc_percent": 54.768,
+      "command_activity": "NOMINAL_ATTITUDE_HOLD",
+      "communications_status": "NO_CONTACT_WINDOW",
+      "image_utility_score": 0.6366
+    },
+    {
+      "timestamp": "2026-08-12T17:30:00Z",
+      "solar_array_current_a": 6.741,
+      "payload_power_draw_w": 27.0,
+      "bus_voltage_v": 28.186,
+      "battery_soc_percent": 54.803,
+      "command_activity": "NOMINAL_ATTITUDE_HOLD",
+      "communications_status": "NO_CONTACT_WINDOW",
+      "image_utility_score": 0.625
+    },
+    {
+      "timestamp": "2026-08-12T17:35:00Z",
+      "solar_array_current_a": 6.788,
+      "payload_power_draw_w": 27.17,
+      "bus_voltage_v": 28.187,
+      "battery_soc_percent": 54.825,
+      "command_activity": "NOMINAL_ATTITUDE_HOLD",
+      "communications_status": "NO_CONTACT_WINDOW",
+      "image_utility_score": 0.614
+    },
+    {
+      "timestamp": "2026-08-12T17:40:00Z",
+      "solar_array_current_a": 6.839,
+      "payload_power_draw_w": 27.67,
+      "bus_voltage_v": 28.187,
+      "battery_soc_percent": 54.832,
+      "command_activity": "NOMINAL_ATTITUDE_HOLD",
+      "communications_status": "NO_CONTACT_WINDOW",
+      "image_utility_score": 0.6036
+    },
+    {
+      "timestamp": "2026-08-12T17:45:00Z",
+      "solar_array_current_a": 6.894,
+      "payload_power_draw_w": 28.46,
+      "bus_voltage_v": 28.187,
+      "battery_soc_percent": 54.825,
+      "command_activity": "NOMINAL_ATTITUDE_HOLD",
+      "communications_status": "NO_CONTACT_WINDOW",
+      "image_utility_score": 0.5939
+    },
+    {
+      "timestamp": "2026-08-12T17:50:00Z",
+      "solar_array_current_a": 6.952,
+      "payload_power_draw_w": 29.5,
+      "bus_voltage_v": 28.186,
+      "battery_soc_percent": 54.802,
+      "command_activity": "NOMINAL_ATTITUDE_HOLD",
+      "communications_status": "NO_CONTACT_WINDOW",
+      "image_utility_score": 0.5851
+    },
+    {
+      "timestamp": "2026-08-12T17:55:00Z",
+      "solar_array_current_a": 7.012,
+      "payload_power_draw_w": 30.71,
+      "bus_voltage_v": 28.186,
+      "battery_soc_percent": 54.765,
+      "command_activity": "NOMINAL_ATTITUDE_HOLD",
+      "communications_status": "NO_CONTACT_WINDOW",
+      "image_utility_score": 0.5771
+    },
+    {
+      "timestamp": "2026-08-12T18:00:00Z",
+      "solar_array_current_a": 7.072,
+      "payload_power_draw_w": 95.0,
+      "bus_voltage_v": 28.185,
+      "battery_soc_percent": 54.713,
+      "command_activity": "PAYLOAD_IMAGING_ACTIVE",
+      "communications_status": "NO_CONTACT_WINDOW",
+      "image_utility_score": 0.5701
+    },
+    {
+      "timestamp": "2026-08-12T18:05:00Z",
+      "solar_array_current_a": 7.133,
+      "payload_power_draw_w": 96.5,
+      "bus_voltage_v": 28.184,
+      "battery_soc_percent": 54.648,
+      "command_activity": "PAYLOAD_IMAGING_ACTIVE",
+      "communications_status": "NO_CONTACT_WINDOW",
+      "image_utility_score": 0.5641
+    },
+    {
+      "timestamp": "2026-08-12T18:10:00Z",
+      "solar_array_current_a": 7.192,
+      "payload_power_draw_w": 97.6,
+      "bus_voltage_v": 28.182,
+      "battery_soc_percent": 54.571,
+      "command_activity": "PAYLOAD_IMAGING_ACTIVE",
+      "communications_status": "NO_CONTACT_WINDOW",
+      "image_utility_score": 0.559
+    },
+    {
+      "timestamp": "2026-08-12T18:15:00Z",
+      "solar_array_current_a": 7.251,
+      "payload_power_draw_w": 98.0,
+      "bus_voltage_v": 28.181,
+      "battery_soc_percent": 54.485,
+      "command_activity": "PAYLOAD_IMAGING_ACTIVE",
+      "communications_status": "NO_CONTACT_WINDOW",
+      "image_utility_score": 0.5551
+    },
+    {
+      "timestamp": "2026-08-12T18:20:00Z",
+      "solar_array_current_a": 7.307,
+      "payload_power_draw_w": 97.6,
+      "bus_voltage_v": 28.179,
+      "battery_soc_percent": 54.391,
+      "command_activity": "PAYLOAD_IMAGING_ACTIVE",
+      "communications_status": "NO_CONTACT_WINDOW",
+      "image_utility_score": 0.5523
+    },
+    {
+      "timestamp": "2026-08-12T18:25:00Z",
+      "solar_array_current_a": 7.36,
+      "payload_power_draw_w": 96.5,
+      "bus_voltage_v": 28.177,
+      "battery_soc_percent": 54.292,
+      "command_activity": "PAYLOAD_IMAGING_ACTIVE",
+      "communications_status": "NO_CONTACT_WINDOW",
+      "image_utility_score": 0.5506
+    },
+    {
+      "timestamp": "2026-08-12T18:30:00Z",
+      "solar_array_current_a": 7.41,
+      "payload_power_draw_w": 37.0,
+      "bus_voltage_v": 28.175,
+      "battery_soc_percent": 54.19,
+      "command_activity": "NOMINAL_ATTITUDE_HOLD",
+      "communications_status": "NO_CONTACT_WINDOW",
+      "image_utility_score": 0.55
+    },
+    {
+      "timestamp": "2026-08-12T18:35:00Z",
+      "solar_array_current_a": 7.457,
+      "payload_power_draw_w": 36.83,
+      "bus_voltage_v": 28.174,
+      "battery_soc_percent": 54.088,
+      "command_activity": "NOMINAL_ATTITUDE_HOLD",
+      "communications_status": "NO_CONTACT_WINDOW",
+      "image_utility_score": 0.5506
+    },
+    {
+      "timestamp": "2026-08-12T18:40:00Z",
+      "solar_array_current_a": 7.501,
+      "payload_power_draw_w": 36.33,
+      "bus_voltage_v": 28.172,
+      "battery_soc_percent": 53.989,
+      "command_activity": "NOMINAL_ATTITUDE_HOLD",
+      "communications_status": "NO_CONTACT_WINDOW",
+      "image_utility_score": 0.5523
+    },
+    {
+      "timestamp": "2026-08-12T18:45:00Z",
+      "solar_array_current_a": 7.54,
+      "payload_power_draw_w": 35.54,
+      "bus_voltage_v": 28.17,
+      "battery_soc_percent": 53.895,
+      "command_activity": "NOMINAL_ATTITUDE_HOLD",
+      "communications_status": "NO_CONTACT_WINDOW",
+      "image_utility_score": 0.5551
+    },
+    {
+      "timestamp": "2026-08-12T18:50:00Z",
+      "solar_array_current_a": 7.576,
+      "payload_power_draw_w": 34.5,
+      "bus_voltage_v": 28.169,
+      "battery_soc_percent": 53.809,
+      "command_activity": "NOMINAL_ATTITUDE_HOLD",
+      "communications_status": "NO_CONTACT_WINDOW",
+      "image_utility_score": 0.559
+    },
+    {
+      "timestamp": "2026-08-12T18:55:00Z",
+      "solar_array_current_a": 7.609,
+      "payload_power_draw_w": 33.29,
+      "bus_voltage_v": 28.167,
+      "battery_soc_percent": 53.732,
+      "command_activity": "NOMINAL_ATTITUDE_HOLD",
+      "communications_status": "NO_CONTACT_WINDOW",
+      "image_utility_score": 0.5641
+    },
+    {
+      "timestamp": "2026-08-12T19:00:00Z",
+      "solar_array_current_a": 7.638,
+      "payload_power_draw_w": 32.0,
+      "bus_voltage_v": 28.166,
+      "battery_soc_percent": 53.667,
+      "command_activity": "NOMINAL_ATTITUDE_HOLD",
+      "communications_status": "NO_CONTACT_WINDOW",
+      "image_utility_score": 0.5701
+    },
+    {
+      "timestamp": "2026-08-12T19:05:00Z",
+      "solar_array_current_a": 7.663,
+      "payload_power_draw_w": 30.71,
+      "bus_voltage_v": 28.165,
+      "battery_soc_percent": 53.615,
+      "command_activity": "NOMINAL_ATTITUDE_HOLD",
+      "communications_status": "NO_CONTACT_WINDOW",
+      "image_utility_score": 0.5771
+    },
+    {
+      "timestamp": "2026-08-12T19:10:00Z",
+      "solar_array_current_a": 7.685,
+      "payload_power_draw_w": 29.5,
+      "bus_voltage_v": 28.164,
+      "battery_soc_percent": 53.578,
+      "command_activity": "NOMINAL_ATTITUDE_HOLD",
+      "communications_status": "NO_CONTACT_WINDOW",
+      "image_utility_score": 0.5851
+    },
+    {
+      "timestamp": "2026-08-12T19:15:00Z",
+      "solar_array_current_a": 7.705,
+      "payload_power_draw_w": 28.46,
+      "bus_voltage_v": 28.164,
+      "battery_soc_percent": 53.555,
+      "command_activity": "NOMINAL_ATTITUDE_HOLD",
+      "communications_status": "NO_CONTACT_WINDOW",
+      "image_utility_score": 0.5939
+    },
+    {
+      "timestamp": "2026-08-12T19:20:00Z",
+      "solar_array_current_a": 7.721,
+      "payload_power_draw_w": 27.67,
+      "bus_voltage_v": 28.164,
+      "battery_soc_percent": 53.548,
+      "command_activity": "NOMINAL_ATTITUDE_HOLD",
+      "communications_status": "NO_CONTACT_WINDOW",
+      "image_utility_score": 0.6036
+    },
+    {
+      "timestamp": "2026-08-12T19:25:00Z",
+      "solar_array_current_a": 7.735,
+      "payload_power_draw_w": 27.17,
+      "bus_voltage_v": 28.164,
+      "battery_soc_percent": 53.555,
+      "command_activity": "NOMINAL_ATTITUDE_HOLD",
+      "communications_status": "NO_CONTACT_WINDOW",
+      "image_utility_score": 0.614
+    },
+    {
+      "timestamp": "2026-08-12T19:30:00Z",
+      "solar_array_current_a": 7.747,
+      "payload_power_draw_w": 27.0,
+      "bus_voltage_v": 28.164,
+      "battery_soc_percent": 53.577,
+      "command_activity": "NOMINAL_ATTITUDE_HOLD",
+      "communications_status": "NO_CONTACT_WINDOW",
+      "image_utility_score": 0.625
+    },
+    {
+      "timestamp": "2026-08-12T19:35:00Z",
+      "solar_array_current_a": 7.757,
+      "payload_power_draw_w": 27.17,
+      "bus_voltage_v": 28.165,
+      "battery_soc_percent": 53.612,
+      "command_activity": "NOMINAL_ATTITUDE_HOLD",
+      "communications_status": "NO_CONTACT_WINDOW",
+      "image_utility_score": 0.6366
+    },
+    {
+      "timestamp": "2026-08-12T19:40:00Z",
+      "solar_array_current_a": 7.766,
+      "payload_power_draw_w": 27.67,
+      "bus_voltage_v": 28.166,
+      "battery_soc_percent": 53.659,
+      "command_activity": "NOMINAL_ATTITUDE_HOLD",
+      "communications_status": "NO_CONTACT_WINDOW",
+      "image_utility_score": 0.6487
+    },
+    {
+      "timestamp": "2026-08-12T19:45:00Z",
+      "solar_array_current_a": 7.773,
+      "payload_power_draw_w": 28.46,
+      "bus_voltage_v": 28.167,
+      "battery_soc_percent": 53.715,
+      "command_activity": "NOMINAL_ATTITUDE_HOLD",
+      "communications_status": "NO_CONTACT_WINDOW",
+      "image_utility_score": 0.6612
+    },
+    {
+      "timestamp": "2026-08-12T19:50:00Z",
+      "solar_array_current_a": 7.778,
+      "payload_power_draw_w": 29.5,
+      "bus_voltage_v": 28.168,
+      "battery_soc_percent": 53.779,
+      "command_activity": "NOMINAL_ATTITUDE_HOLD",
+      "communications_status": "NO_CONTACT_WINDOW",
+      "image_utility_score": 0.674
+    },
+    {
+      "timestamp": "2026-08-12T19:55:00Z",
+      "solar_array_current_a": 7.783,
+      "payload_power_draw_w": 30.71,
+      "bus_voltage_v": 28.169,
+      "battery_soc_percent": 53.848,
+      "command_activity": "NOMINAL_ATTITUDE_HOLD",
+      "communications_status": "NO_CONTACT_WINDOW",
+      "image_utility_score": 0.6869
+    }
+  ]
+}

@@ -1,8 +1,10 @@
 # SpaceBNS Power-Risk Prediction — Implementation Contract
 
-**Status:** design contract — prototype development in progress (deterministic
-scenario generator implemented; balanced training corpus and trained model not
-yet produced)
+**Status:** implementation complete — backend prediction endpoints implemented
+and locally tested; not yet deployed or wired to the frontend. Corpus generated
+with `generate_training_corpus(seed=42)`, final model fitted on 240 synthetic
+scenarios and serialised; all contract validation gates passed on the first and
+only held-out test evaluation.
 
 **Prototype status:** NOT_FLIGHT_QUALIFIED
 
@@ -51,16 +53,16 @@ probabilities
 
 ---
 
-## 2. Existing Behavior (Unchanged)
+## 2. Existing Behavior (Preserved)
 
-The following items exist in `backend/app/main.py` and are not modified by this
-contract.
+The following endpoints existed in `backend/app/main.py` before this milestone
+and remain behaviorally unchanged.
 
-| Endpoint | Source location | Notes |
-|---|---|---|
-| `GET /health` | `main.py:53` | Unchanged |
-| `GET /api/v1/mock/telemetry` | `main.py:66` | Serves `data/mock/telemetry.json` (5 samples); unchanged |
-| `GET /api/v1/mock/assessment` | `main.py:78` | Four threshold rules at lines 89–116; unchanged except that its threshold logic will be extracted into a shared policy function |
+| Endpoint | Notes |
+|---|---|
+| `GET /health` | Unchanged |
+| `GET /api/v1/mock/telemetry` | Serves `data/mock/telemetry.json` (5 samples); unchanged |
+| `GET /api/v1/mock/assessment` | Response behavior unchanged. Its internal threshold logic was refactored into `backend/app/policy.py`; the endpoint was updated to call `apply_power_thresholds()` instead of duplicating the four rules inline. |
 
 `data/mock/telemetry.json` contains 5 samples and is the accelerated dashboard
 demonstration input. It is not used for AI training and is not the history
@@ -80,7 +82,7 @@ single unified output.
 | Layer | Name | Description |
 |---|---|---|
 | L1 | AI classifier output | Probability estimated from the synthetic scenario distribution; `null` in degraded mode |
-| L2 | Deterministic energy projection | Physics-based hourly curve; present only when all five physical assumptions are supplied; labelled as not an AI output |
+| L2 | Deterministic energy projection | Physics-based hourly curve; present when all five physical assumptions are supplied, including in degraded mode when L1 is unavailable; labelled as not an AI output |
 | L3 | Safety threshold findings | Instantaneous deterministic threshold checks via the shared policy function; run independently of L1 |
 | L4 | Advisory recommendation | Human-readable advisory derived from L1 and L3; no command authority |
 
@@ -104,6 +106,9 @@ available:
 - Do not fabricate, extrapolate, or substitute an AI result.
 - L3 threshold findings and the L4 advisory are still computed from the
   available samples.
+- L2 deterministic energy projection is still returned when all projection
+  assumptions are valid and complete; the unavailability of L1 does not
+  suppress L2.
 
 ---
 
@@ -111,27 +116,21 @@ available:
 
 ### Prototype development stage
 
-`backend/scripts/generate_scenarios.py` currently exports one public function:
+`backend/scripts/generate_scenarios.py` exports two public functions:
 
 ```
 generate_prototype_scenarios() -> list[dict]
+generate_training_corpus(seed: int = 42) -> list[dict]
 ```
 
-It returns **exactly 9 deterministic positive-breach scenarios** with no
-randomness or fixed random seed.  The 9 scenarios are scientific test anchors
-that exhaustively cover the 3 × 3 breach-type / timing-band matrix:
+`generate_prototype_scenarios()` returns **exactly 9 deterministic
+positive-breach scenarios** covering the 3 × 3 breach-type / timing-band
+matrix. These are scientific test anchors only and are not used for training.
 
-| Breach type    | Timing bands covered        |
-|----------------|-----------------------------|
-| `SOC_ONLY`     | early, middle, late         |
-| `VOLTAGE_ONLY` | early, middle, late         |
-| `BOTH`         | early, middle, late         |
-
-**These 9 scenarios are prototype feasibility probes only.** They must not be
-used alone to train or evaluate the AI classifier.  All 9 carry
-`power_constraint_breach_within_24h = 1` (positive class); they contain no
-negative examples and therefore do not constitute a balanced corpus.  The
-balanced 300-scenario corpus described below remains to be generated.
+`generate_training_corpus(seed=42)` returns the balanced 300-scenario corpus
+(150 positive, 150 negative) with the pre-assigned `split` field.  This is the
+function called by both `train_power_risk_model.py` and
+`evaluate_power_risk_model.py`.
 
 ### Generation approach
 
@@ -142,11 +141,12 @@ never enter Git history.
 | Item | Value |
 |---|---|
 | Generator script | `backend/scripts/generate_scenarios.py` |
-| Random seed | Not required for the deterministic prototype stage; will be a fixed constant when the full 300-scenario corpus generator is implemented |
+| Public corpus function | `generate_training_corpus(seed=42)` |
+| Random seed | `42` (fixed constant; same seed always produces the same 300 scenarios in the same order) |
 | Output file | `data/scenarios/power_scenarios.json` (gitignored) |
 | Directory name | `data/scenarios/` — avoids the `.bobignore` conflict with `data/training/` |
 | Regeneration command | `python backend/scripts/generate_scenarios.py` |
-| Determinism guarantee | For the prototype stage: nine closed-form physics scenarios are fully deterministic with no randomness. For the full corpus: same seed will always produce the same 300 scenarios in the same order |
+| Determinism guarantee | Same seed always produces the same 300 scenarios in the same order |
 
 ### Scenario counts and split
 
@@ -290,17 +290,19 @@ calculation.
 | 1 | `soc_latest` | Value of `battery_soc_percent` at the final sample | Current energy state; most proximate to breach threshold |
 | 2 | `soc_mean` | Mean of `battery_soc_percent` over all N samples | Average level over the window |
 | 3 | `soc_min` | Minimum of `battery_soc_percent` over all N samples | Worst energy state seen in the window |
-| 4 | `soc_slope` | OLS slope of `battery_soc_percent` versus elapsed minutes | Rate and direction of energy change |
+| 4 | `soc_slope` | OLS slope of `battery_soc_percent` versus elapsed hours | Rate and direction of energy change |
 | 5 | `voltage_latest` | Value of `bus_voltage_v` at the final sample | Current bus voltage; second breach-threshold variable |
 | 6 | `voltage_min` | Minimum of `bus_voltage_v` over all N samples | Worst-case voltage in the window |
-| 7 | `voltage_slope` | OLS slope of `bus_voltage_v` versus elapsed minutes | Rate of voltage degradation |
+| 7 | `voltage_slope` | OLS slope of `bus_voltage_v` versus elapsed hours | Rate of voltage degradation |
 | 8 | `solar_current_mean` | Mean of `solar_array_current_a` over all N samples | Average generation level |
-| 9 | `solar_current_slope` | OLS slope of `solar_array_current_a` versus elapsed minutes | Whether generation is increasing or decreasing |
+| 9 | `solar_current_slope` | OLS slope of `solar_array_current_a` versus elapsed hours | Whether generation is increasing or decreasing |
 | 10 | `payload_draw_mean` | Mean of `payload_power_draw_w` over all N samples | Average load level |
 | 11 | `payload_draw_max` | Maximum of `payload_power_draw_w` over all N samples | Peak load event severity |
 | 12 | `high_draw_fraction` | Fraction of N samples where `payload_power_draw_w > 100.0 W` | Duty-cycle intensity of high-load activity |
 
-OLS slope is computed using the standard two-pass formula over elapsed minutes.
+OLS slope is computed using the standard two-pass formula.  The time axis is
+expressed in hours: `t_i = i × (step_minutes / 60)` hours, where `step_minutes`
+is 5 for a 5-minute cadence window.  Slope units are therefore change per hour.
 No external statistics library is required.
 
 ---
@@ -315,17 +317,19 @@ No external statistics library is required.
   sum of (standardized feature value × learned coefficient) + intercept. This
   decomposition is the explanation per prediction; no separate explainability
   library is required.
-- **Calibrated probability:** logistic regression outputs are directly
-  interpretable as probabilities. They are labelled explicitly as estimated from
-  the synthetic scenario distribution, not as operational failure probabilities.
+- **Probability output:** logistic regression outputs a value in [0, 1].  It is
+  labelled explicitly as an estimate from the synthetic scenario distribution,
+  not as a calibrated or validated real-spacecraft failure probability.
 - **Small corpus suitability:** L2-regularised logistic regression is
-  well-behaved on 180 training scenarios. More complex models offer marginal
-  benefit and are harder to explain per prediction at this scale.
-- **No additional dependencies:** scikit-learn is the only ML dependency.
+  well-behaved on 240 training+validation scenarios. More complex models offer
+  marginal benefit and are harder to explain per prediction at this scale.
+- **ML dependencies:** scikit-learn, joblib, NumPy, and SciPy are required.
+  NumPy and SciPy versions are pinned in `backend/requirements.txt` for
+  reproducibility.
 - **Serialisation:** a scikit-learn Pipeline object serialises to a single
-  `.joblib` file, typically under 100 KB for 12 features. No model server is
-  required.
-- **Inference latency:** under 5 ms per prediction.
+  `.joblib` file. No model server is required.
+- **Inference latency:** No deployment latency claim is made until the packaged
+  MVP is benchmarked.
 
 ### Per-prediction explanation
 
@@ -347,8 +351,8 @@ prediction. The top 3 contributors by absolute magnitude are surfaced in
 Regularisation strength `C` is selected by evaluating ROC-AUC on the
 validation split (60 scenarios). Candidate values: `[0.01, 0.1, 1.0, 10.0]`.
 The value achieving the highest validation ROC-AUC is used for the final model
-trained on the combined training and validation splits before test-set
-evaluation.
+trained on the combined training and validation splits (240 scenarios total)
+before test-set evaluation.
 
 ### Serialisation
 
@@ -365,19 +369,21 @@ absent the endpoint returns HTTP 503.
 
 ### 8.1 Shared policy function
 
-The four instantaneous threshold checks currently duplicated between
-`mock_assessment()` and the new prediction endpoint are extracted into one
-function:
+The four instantaneous threshold checks that were duplicated between
+`mock_assessment()` and the new prediction endpoint are implemented once in:
 
 ```
 backend/app/policy.py  →  apply_power_thresholds(sample: dict) -> list[dict]
 ```
 
-Both `GET /api/v1/mock/assessment` and the new prediction endpoint call this
-function for their L3 findings. The thresholds in `main.py` lines 89–116 are
-not removed from the existing endpoint; they are replaced by a call to this
-shared function, producing identical output. This is the only permitted
-modification to `main.py`.
+Both `GET /api/v1/mock/assessment` and the prediction endpoints call this
+function for their L3 findings. The assessment endpoint's response behavior was
+unchanged; its inline threshold block was replaced by a call to
+`apply_power_thresholds()`, producing identical output.
+
+`main.py` was also modified to add the two new prediction routes, model loading
+at startup, global exception handlers from `safety.py`, and `"POST"` in the
+CORS `allow_methods` list.
 
 ### 8.2 Core POST endpoint
 
@@ -392,12 +398,14 @@ Content-Type: application/json
 {
   "samples": [
     {
-      "timestamp":             "2026-08-12T14:00:00Z",
-      "solar_array_current_a": 8.4,
-      "payload_power_draw_w":  28.0,
-      "bus_voltage_v":         28.3,
-      "battery_soc_percent":   63.0,
-      "command_activity":      "NOMINAL_ATTITUDE_HOLD"
+      "timestamp":              "2026-08-12T14:00:00Z",
+      "solar_array_current_a":  8.4,
+      "payload_power_draw_w":   28.0,
+      "bus_voltage_v":          28.3,
+      "battery_soc_percent":    63.0,
+      "command_activity":       "NOMINAL_ATTITUDE_HOLD",
+      "communications_status":  "NO_CONTACT_WINDOW",
+      "image_utility_score":    0.72
     }
   ],
   "projection_assumptions": {
@@ -416,11 +424,11 @@ if L2 is desired; if any one is absent, L2 is omitted and
 
 At least 72 valid samples are required for AI inference. Below 72, the response
 is returned with `status: "degraded"`, `ai_prediction: null`, and
-`breach_probability: null`. L3 and L4 still run.
-
-**CORS note:** the existing CORS middleware allows only `GET` methods. Adding
-the POST endpoint requires adding `"POST"` to `allow_methods`. This is the only
-middleware change required.
+`breach_probability: null`. L3 and L4 still run. `deterministic_projection` is
+`null` when assumptions are absent or partial; when complete valid assumptions
+are supplied, L2 runs independently and a 24-entry projection is returned even
+in degraded mode. `projection_omitted_reason` is always present and explains the
+omission when applicable.
 
 ### 8.3 Demonstration GET endpoint
 
@@ -450,7 +458,7 @@ physical causation.**
   "command_authority": "NONE",
   "policy_decision":   "PERMITTED_FOR_SIMULATION_ONLY",
 
-  "scenario_id":       "PUBLIC-DEMO-HISTORY-001",
+  "scenario_id":       "SYNTH-DEMO-PUBLIC-001",
   "query_timestamp":   "2026-08-12T20:20:00Z",
   "model_claim":       "logistic-regression-synthetic-not-trained-on-real-spacecraft",
   "model_version":     "0.1.0",
@@ -461,7 +469,7 @@ physical causation.**
     "label":              "power_constraint_breach_within_24h",
     "predicted_class":    1,
     "breach_probability": 0.79,
-    "probability_note":   "Probability estimated from a logistic regression classifier trained on 180 synthetic scenarios. This is an estimate learned from the synthetic scenario distribution and is not a validated real-spacecraft failure probability. No fixed demonstration value may be hardcoded or presented as operational truth.",
+    "probability_note":   "Probability estimated from a logistic regression classifier. The final pipeline was fitted on 240 synthetic scenarios (train + validation combined) after regularisation strength C was selected using the 180-scenario training split and a 60-scenario validation split. This is an estimate learned from the synthetic scenario distribution and is not a validated real-spacecraft failure probability. No fixed demonstration value may be hardcoded or presented as operational truth.",
     "top_contributions": [
       { "feature": "soc_slope",          "standardized_value": -2.10, "coefficient": -0.84, "contribution":  1.76 },
       { "feature": "soc_latest",         "standardized_value": -1.40, "coefficient": -0.91, "contribution":  1.27 },
@@ -491,9 +499,9 @@ physical causation.**
   ],
 
   "advisory": {
-    "risk_summary":          "ELEVATED",
-    "recommendation":        "INCREASE_MONITORING_FREQUENCY",
-    "basis":                 "AI breach probability 0.79 exceeds 0.40 threshold; 1 safety threshold finding active.",
+    "risk_summary":          "HIGH",
+    "recommendation":        "DEFER_LOW_PRIORITY_FUTURE_IMAGING",
+    "basis":                 "AI breach probability 0.79 exceeds 0.70 threshold; 1 safety threshold finding active.",
     "human_action_required": true,
     "authority_note":        "Advisory output only. No automated action has been or will be taken."
   },
@@ -641,52 +649,64 @@ reported.
 
 ---
 
-## 13. Proposed File Plan
+## 13. Implemented File Plan
 
-The following files have been created during the prototype stage.  Remaining
-files are planned.
+All files listed below have been created.
 
-### Files already created (prototype stage)
+### Created files
 
 | Path | Status | Purpose |
 |---|---|---|
 | `backend/scripts/__init__.py` | Created | Makes `backend/scripts` a Python package. |
-| `backend/scripts/generate_scenarios.py` | Created | Deterministic prototype generator. Currently produces 9 positive-class scenarios covering SOC_ONLY, VOLTAGE_ONLY, and BOTH across early/middle/late timing bands. Full 300-scenario balanced corpus generator to follow. |
-| `backend/tests/test_generate_scenarios.py` | Created | 23 tests (T01–T23) covering determinism, 3 × 3 type/band coverage, schema, sample counts, cadence, trajectory continuity, physics bounds, safety metadata, and label integrity for the prototype scenarios. |
+| `backend/scripts/generate_scenarios.py` | Created | Exports `generate_prototype_scenarios()` (9 deterministic anchor scenarios) and `generate_training_corpus(seed=42)` (300-scenario balanced corpus used for training and evaluation). |
+| `backend/scripts/train_power_risk_model.py` | Created | Generates corpus, selects C on validation split, fits final pipeline on 240 train+val scenarios, serialises to `data/models/power_risk_classifier.joblib`. |
+| `backend/scripts/evaluate_power_risk_model.py` | Created | One-shot held-out test evaluation; hard leakage and breach-eligibility checks before metric reporting. |
+| `backend/app/policy.py` | Created | Exports `apply_power_thresholds(sample: dict) -> list[dict]`. |
+| `backend/app/features.py` | Created | Exports `extract_features()` (12 features) and `ols_slope()`. |
+| `backend/app/safety.py` | Created | Global FastAPI exception handlers; mandatory safety envelope. |
+| `backend/app/prediction_service.py` | Created | Core four-layer prediction service called by both endpoints. |
+| `data/mock/history.json` | Created | Static 72-sample public mock history. No active L3 breach at final sample. |
+| `backend/tests/test_generate_scenarios.py` | Created | Tests for both `generate_prototype_scenarios()` and `generate_training_corpus()`. |
+| `backend/tests/test_power_risk_prediction.py` | Created | Contract, safety-envelope, L1/L3, degraded-mode, and failure-mode endpoint tests. |
+| `backend/tests/test_features.py` | Created | Unit tests for `extract_features()` and `ols_slope()`. |
+| `backend/tests/test_policy.py` | Created | Unit tests for `apply_power_thresholds()`. |
+| `backend/tests/test_model_pipeline.py` | Created | Focused tests (M01–M23) for training and evaluation pipeline isolation. |
 
-### New files still to create
-
-| Path | Purpose |
-|---|---|
-| `data/mock/history.json` | Static 72-sample public mock history for the demonstration GET endpoint. Hand-authored; no active L3 breach at sample 72. Committed to the repository. |
-| `backend/app/policy.py` | Exports `apply_power_thresholds(sample: dict) -> list[dict]`. Contains the four threshold rules extracted from `mock_assessment()`. Called by both the existing assessment endpoint and the new prediction endpoint. |
-| `backend/app/features.py` | Pure module. Exports `extract_features(samples: list[dict]) -> dict[str, float]` (12 features) and `ols_slope(values: list[float], times: list[float]) -> float`. No I/O; no side effects. |
-| `backend/app/safety.py` | Exports the global FastAPI exception handler and the mandatory safety envelope dict. Registers the handler on the app to ensure the four mandatory fields appear on all unhandled error responses. |
-| `backend/app/prediction_service.py` | Core prediction service function called by both the POST and GET prediction endpoints. Accepts a list of sample dicts and optional projection assumptions. Returns the full four-layer response dict. |
-| `backend/scripts/train_power_risk_model.py` | Loads the scenario corpus; extracts 12 features; runs hyperparameter selection on the validation split; trains the final pipeline on train + val; serialises to `data/models/power_risk_classifier.joblib`; prints metrics to stdout. |
-| `backend/scripts/evaluate_power_risk_model.py` | Loads the test split; runs inference; checks leakage and breach-eligibility before computing metrics; outputs a JSON report to stdout. Does not modify any file. |
-| `backend/tests/test_power_risk_prediction.py` | Contract, safety-envelope, L1/L3 boundary, degraded-mode, and failure-mode tests for both prediction endpoints. Uses `TestClient`. |
-| `backend/tests/test_features.py` | Unit tests for `extract_features()` and `ols_slope()` using known synthetic inputs with hand-computed expected values. |
-| `backend/tests/test_policy.py` | Unit tests for `apply_power_thresholds()` confirming that its output matches the existing `mock_assessment()` findings for all four threshold conditions. |
-
-### Files to modify
+### Modified files
 
 | Path | Change |
 |---|---|
-| `backend/app/main.py` | (1) Replace the inline threshold block in `mock_assessment()` with a call to `apply_power_thresholds()` from `backend/app/policy.py`. (2) Add `POST /api/v1/power-risk/predict` and `GET /api/v1/mock/power-risk-prediction` routes. (3) Add model load at startup with graceful 503 if absent. (4) Import and register the global exception handler from `safety.py`. (5) Add `"POST"` to `allow_methods` in the CORS middleware. All other existing logic is untouched. |
-| `backend/requirements.txt` | Add `scikit-learn` and `joblib` to satisfy the model pipeline and serialisation dependencies introduced by this milestone. |
-| `.gitignore` | Add `data/scenarios/` and `data/models/` to prevent generated artefacts from entering Git history. |
-| `docs/architecture.md` | Add the four-layer separation (L1–L4) to the component table and the decision contract. Add a row for the power-risk prediction component and the shared policy function. |
-| `docs/bob-usage.md` | Record corpus generation, model training, and endpoint implementation as new evidence entries when that work is completed. |
+| `backend/app/main.py` | Added prediction endpoints, shared policy, model load, global exception handlers, POST CORS. |
+| `backend/requirements.txt` | Added `scikit-learn==1.6.1` and `joblib==1.4.2`. |
+| `.gitignore` | Added `data/scenarios/` and `data/models/`. |
+| `docs/bob-usage.md` | Recorded corpus generation, training, evaluation, and endpoint implementation. |
+
+### Generated artefacts (git-ignored)
+
+| Path | Description |
+|---|---|
+| `data/models/power_risk_classifier.joblib` | Fitted pipeline; not committed. |
+| `data/scenarios/power_scenarios.json` | Generated corpus; not committed. |
 
 ### Model availability lifecycle
 
 Generated scenarios and model artifacts are absent from a clean Git clone.
-Before starting the prediction endpoint locally, a developer must run the
-scenario generator and then the training command to produce
-`data/models/power_risk_classifier.joblib`. If the model file is unavailable,
-the endpoint returns its documented HTTP 503 response with
-`"error": "MODEL_NOT_LOADED"` and all four mandatory safety envelope fields.
+To start the prediction endpoint locally:
+
+1. Run the training command, which generates the corpus in memory and writes
+   the model:
+   ```
+   python -m backend.scripts.train_power_risk_model
+   ```
+2. Start the API server; it loads the model at startup.
+
+Running the scenario generator CLI (`python backend/scripts/generate_scenarios.py`)
+is optional — it writes an inspectable corpus JSON file but is not required
+before training.
+
+If `data/models/power_risk_classifier.joblib` is absent, the prediction
+endpoints return HTTP 503 with `"error": "MODEL_NOT_LOADED"` and all four
+mandatory safety-envelope fields.
 
 Docker integration must later generate scenarios and train the reproducible
 public demonstration model during image construction or a controlled startup
@@ -718,9 +738,9 @@ interpreting any output.
    hardcoded in source code, documentation, or UI and presented as operational
    truth.
 
-2. **Small corpus.** 180 training scenarios is a small dataset. The classifier
-   may not generalise to power dynamics outside the variation axes explicitly
-   covered by the generator.
+2. **Small corpus.** 240 training+validation scenarios (final fit) is a small
+   dataset. The classifier may not generalise to power dynamics outside the
+   variation axes explicitly covered by the generator.
 
 3. **Linear feature assumptions.** OLS slope features assume linear trends
    within the 6-hour window. Non-linear dynamics — rapid eclipse transitions,

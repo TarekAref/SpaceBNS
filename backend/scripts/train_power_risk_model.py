@@ -8,7 +8,9 @@ Process
 -------
 1. Generate the 300-scenario corpus with seed=42.
 2. Split into train (180), validation (60), and test (60) using the pre-assigned
-   scenario["split"] field.  The test split is assembled but never inspected here.
+   scenario["split"] field.  Only the test scenario count and scenario IDs are
+   checked for split-separation; test labels, features, probabilities, and
+   metrics are not inspected during training.
 3. Extract 12 features from each scenario's history window.
 4. Select regularisation strength C from [0.01, 0.1, 1.0, 10.0] by evaluating
    ROC-AUC on the validation split only.
@@ -179,9 +181,10 @@ def train_power_risk_model(
         leakage_count, breach_eligibility_violations,
         model_path
 
-    Note: test labels, probabilities, and metrics are deliberately excluded.
+    Note: test labels, features, probabilities, and metrics are deliberately excluded.
     They belong to the evaluation stage (evaluate_power_risk_model.py).
-    The test split is verified for count and ID-separation only.
+    Only the test split's count and scenario-ID separation are checked during
+    training; its labels, features, probabilities, and metrics are not inspected.
     """
     # -----------------------------------------------------------------------
     # 1. Generate corpus
