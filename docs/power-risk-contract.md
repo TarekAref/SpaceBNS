@@ -1,10 +1,11 @@
 # SpaceBNS Power-Risk Prediction — Implementation Contract
 
-**Status:** implementation complete — backend prediction endpoints implemented
-and locally tested; not yet deployed or wired to the frontend. Corpus generated
-with `generate_training_corpus(seed=42)`, final model fitted on 240 synthetic
-scenarios and serialised; all contract validation gates passed on the first and
-only held-out test evaluation.
+**Status:** implementation complete — backend prediction endpoints and the
+responsive frontend are integrated and locally validated; deployment remains
+pending. Corpus generated with `generate_training_corpus(seed=42)`, final model
+fitted on 240 synthetic scenarios and serialised; all contract validation gates
+passed on the first and only held-out test evaluation. Clean-source model
+generation and the safety-enveloped API smoke test also passed.
 
 **Prototype status:** NOT_FLIGHT_QUALIFIED
 
