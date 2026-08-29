@@ -13,6 +13,8 @@ node_modules/
 .next/
 out/
 npm-debug.log*
+*.tsbuildinfo
+next-env.d.ts
 
 # Secrets and local configuration
 .env
@@ -25,6 +27,8 @@ secrets/
 # Models and non-public data
 models/private/
 data/private/
+data/scenarios/
+data/models/
 *.onnx
 *.pt
 *.pth

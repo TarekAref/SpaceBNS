@@ -1,0 +1,193 @@
+# ==============================================================================
+# SpaceBNS -- .bobignore
+#
+# PURPOSE
+# These patterns instruct Bob's workspace file tools to skip matching paths
+# when reading, indexing, or surfacing content.  This is not a system-level
+# security sandbox: the patterns cannot prevent a determined actor from reading
+# the underlying files through other means.
+#
+# IMPORTANT
+# Private models, real telemetry, credentials, and proprietary algorithms must
+# remain physically outside this repository.  The patterns below are
+# defense-in-depth; they are not permission to store excluded material here.
+#
+# PRESERVED ACCESS
+# Bob retains full access to all public source code, including:
+#   backend/   frontend/   docs/   .github/   AGENTS.md   data/mock/
+# ==============================================================================
+
+
+# -- 1. Environment files ------------------------------------------------------
+# Block every .env variant so that real secrets (API keys, tokens, DSNs) are
+# never visible to Bob.
+# The negation re-allows the checked-in example file, which contains no real
+# values and is intentionally public.
+.env
+.env.*
+!.env.example
+
+
+# -- 2. Credentials, tokens, certificates, and private keys --------------------
+# PEM / DER / CRT certificate files
+*.pem
+*.crt
+*.cer
+*.der
+
+# PKCS#12 and PFX bundles
+*.p12
+*.pfx
+
+# Private key files
+*.key
+
+# SSH key files
+id_rsa
+id_ed25519
+id_ecdsa
+.ssh/
+
+# Token and API-key files
+*.token
+*.apikey
+
+# GCP / cloud service-account JSON blobs
+*_credentials.json
+*_service_account.json
+service-account*.json
+
+# Well-known credential file names
+credentials.json
+config/credentials.json
+
+# Secret and credential directories
+secrets/
+credentials/
+
+
+# -- 3. Private BNS models, weights, and training data -------------------------
+# Proprietary directory subtrees
+# (data/mock/ is explicitly excluded from this block and remains accessible)
+models/private/
+data/private/
+data/customer/
+data/telemetry/real/
+artifacts/private/
+training/
+calibration/
+checkpoints/
+
+# Generic weight-dump files
+*.weights
+
+
+# -- 4. Model binary formats ---------------------------------------------------
+# ONNX
+*.onnx
+
+# PyTorch
+*.pt
+*.pth
+
+# TFLite
+*.tflite
+
+# SafeTensor
+*.safetensors
+
+# GGUF / GGML (llama.cpp family)
+*.gguf
+*.ggml
+
+# Core ML
+*.mlmodel
+
+# Pickled Python models and sklearn pipelines
+*.pkl
+*.joblib
+
+
+# -- 5. Databases --------------------------------------------------------------
+# SQLite variants
+*.db
+*.sqlite
+*.sqlite3
+
+# DuckDB
+*.duckdb
+
+
+# -- 6. Log files --------------------------------------------------------------
+# Log directory
+logs/
+
+# Log file extensions
+*.log
+*.log.*
+
+# Node package-manager debug logs
+npm-debug.log*
+yarn-error.log*
+pnpm-debug.log*
+
+
+# -- 7. Python virtual environments and caches ---------------------------------
+# Virtual environment directories
+.venv/
+venv/
+env/
+
+# Byte-compiled / optimised / DLL files
+__pycache__/
+*.py[cod]
+
+# Distribution and build artefacts
+*.egg-info/
+dist/
+build/
+*.egg
+
+# Test and type-checker caches
+.pytest_cache/
+.mypy_cache/
+.ruff_cache/
+.tox/
+
+
+# -- 8. Node modules, Next.js output, and generated frontend artefacts ---------
+# Third-party packages
+node_modules/
+
+# Next.js compiled output
+.next/
+out/
+
+# Turbo and Vercel caches
+.turbo/
+.vercel/
+
+# Plug-n-Play artefacts
+.pnp/
+.pnp.js
+
+
+# -- 9. IDE and operating-system metadata --------------------------------------
+# macOS finder metadata
+.DS_Store
+
+# Windows thumbnail cache
+Thumbs.db
+
+# JetBrains IDEs
+.idea/
+
+# VS Code workspace settings
+.vscode/
+
+# Local edit history
+.history/
+
+# Windows Visual Studio artefacts
+*.suo
+*.user
