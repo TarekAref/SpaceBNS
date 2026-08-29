@@ -11,7 +11,8 @@ Process
    scenario["split"] field.  Only the test scenario count and scenario IDs are
    checked for split-separation; test labels, features, probabilities, and
    metrics are not inspected during training.
-3. Extract 12 features from each scenario's history window.
+3. Extract 12 features from each scenario's history window and neutralise any
+   training feature whose variance is indistinguishable from floating-point noise.
 4. Select regularisation strength C from [0.01, 0.1, 1.0, 10.0] by evaluating
    ROC-AUC on the validation split only.
 5. Train the final pipeline on train + validation (240 scenarios) using the best C.
@@ -61,6 +62,12 @@ FEATURE_ORDER: list[str] = [
 # ---------------------------------------------------------------------------
 
 C_CANDIDATES: list[float] = [0.01, 0.1, 1.0, 10.0]
+
+# A feature with a population standard deviation below this floor carries no
+# learnable variation in the synthetic training split.  It is neutralised
+# before fitting so StandardScaler cannot magnify floating-point noise into an
+# out-of-distribution model input at inference time.
+NEAR_CONSTANT_SCALE_FLOOR: float = 1e-12
 
 # ---------------------------------------------------------------------------
 # Breach-eligibility thresholds (contract Section 5, Label eligibility)
@@ -130,6 +137,63 @@ def _build_matrices(
     return X, y
 
 
+def _find_near_constant_feature_indices(
+    X_reference: list[list[float]],
+) -> list[int]:
+    """Return feature indices with negligible variance in the fit split.
+
+    The decision uses only the training matrix supplied by the caller.  This
+    preserves validation/test isolation while preventing numerical noise in a
+    constant synthetic feature from becoming a learned signal.
+    """
+    if not X_reference:
+        raise ValueError("Cannot inspect feature variance in an empty matrix")
+
+    expected_width = len(FEATURE_ORDER)
+    if any(len(row) != expected_width for row in X_reference):
+        raise ValueError("Feature matrix width does not match FEATURE_ORDER")
+
+    near_constant: list[int] = []
+    for feature_index in range(expected_width):
+        values = [float(row[feature_index]) for row in X_reference]
+        if not all(math.isfinite(value) for value in values):
+            raise ValueError(
+                f"Non-finite training value for {FEATURE_ORDER[feature_index]}"
+            )
+
+        mean = sum(values) / len(values)
+        variance = sum((value - mean) ** 2 for value in values) / len(values)
+        scale = math.sqrt(max(variance, 0.0))
+        if scale < NEAR_CONSTANT_SCALE_FLOOR:
+            near_constant.append(feature_index)
+
+    return near_constant
+
+
+def _neutralize_feature_columns(
+    X: list[list[float]],
+    feature_indices: list[int],
+) -> list[list[float]]:
+    """Return a copy of *X* with unsupported feature columns fixed at zero.
+
+    LogisticRegression therefore assigns those columns zero weight.  The
+    original matrices are never mutated, and all 12 schema positions remain
+    present for API compatibility and auditability.
+    """
+    neutralized = set(feature_indices)
+    expected_width = len(FEATURE_ORDER)
+    if any(len(row) != expected_width for row in X):
+        raise ValueError("Feature matrix width does not match FEATURE_ORDER")
+
+    return [
+        [
+            0.0 if index in neutralized else float(value)
+            for index, value in enumerate(row)
+        ]
+        for row in X
+    ]
+
+
 def _roc_auc_score(y_true: list[int], y_prob: list[float]) -> float:
     """Compute ROC-AUC using the Wilcoxon-Mann-Whitney U statistic.
 
@@ -178,7 +242,7 @@ def train_power_risk_model(
     dict with keys:
         selected_c, val_roc_auc_by_c, train_count, val_count, test_count,
         train_pos, train_neg, val_pos, val_neg,
-        leakage_count, breach_eligibility_violations,
+        leakage_count, breach_eligibility_violations, neutralized_features,
         model_path
 
     Note: test labels, features, probabilities, and metrics are deliberately excluded.
@@ -234,6 +298,15 @@ def train_power_risk_model(
     X_train, y_train = _build_matrices(train_scenarios)
     X_val,   y_val   = _build_matrices(val_scenarios)
 
+    # Detect unsupported features from the training split only.  Apply the
+    # frozen mask to both matrices used for model selection.  A neutralized
+    # column remains in the 12-feature schema but is constant zero, producing
+    # scaler scale=1 and classifier coefficient=0 instead of amplifying noise.
+    neutralized_indices = _find_near_constant_feature_indices(X_train)
+    neutralized_features = [FEATURE_ORDER[i] for i in neutralized_indices]
+    X_train_model = _neutralize_feature_columns(X_train, neutralized_indices)
+    X_val_model = _neutralize_feature_columns(X_val, neutralized_indices)
+
     # -----------------------------------------------------------------------
     # 4. Hyperparameter selection on validation split
     # -----------------------------------------------------------------------
@@ -255,9 +328,9 @@ def train_power_risk_model(
             # Treat convergence warnings as failures (contract requirement).
             # Catch only ConvergenceWarning; ignore unrelated scipy/solver warnings.
             warnings.filterwarnings("error", category=ConvergenceWarning)
-            pipe.fit(X_train, y_train)
+            pipe.fit(X_train_model, y_train)
 
-        probs = [p[1] for p in pipe.predict_proba(X_val)]
+        probs = [p[1] for p in pipe.predict_proba(X_val_model)]
         auc = _roc_auc_score(y_val, probs)
         val_roc_auc_by_c[c] = auc
 
@@ -269,7 +342,7 @@ def train_power_risk_model(
     # -----------------------------------------------------------------------
     # 5. Train final pipeline on train + validation (240 scenarios)
     # -----------------------------------------------------------------------
-    X_trainval = X_train + X_val
+    X_trainval = X_train_model + X_val_model
     y_trainval = y_train + y_val
     assert len(X_trainval) == 240, f"train+val={len(X_trainval)}"
 
@@ -301,6 +374,7 @@ def train_power_risk_model(
         "val_neg":                  val_neg,
         "leakage_count":            leakage,
         "breach_eligibility_violations": breach_violations,
+        "neutralized_features":     neutralized_features,
         "model_path":               save_path,
     }
 

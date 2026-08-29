@@ -32,7 +32,10 @@ from typing import Any
 from backend.app.features import extract_features
 from backend.app.policy import apply_power_thresholds
 from backend.app.safety import SAFETY_ENVELOPE
-from backend.scripts.train_power_risk_model import FEATURE_ORDER
+from backend.scripts.train_power_risk_model import (
+    FEATURE_ORDER,
+    NEAR_CONSTANT_SCALE_FLOOR,
+)
 
 # ---------------------------------------------------------------------------
 # Model pipeline (loaded once at import time; None if file absent)
@@ -41,7 +44,7 @@ from backend.scripts.train_power_risk_model import FEATURE_ORDER
 _pipeline: Any = None
 _pipeline_load_error: str | None = None
 
-MODEL_VERSION = "0.1.0"
+MODEL_VERSION = "0.1.1"
 _PROBABILITY_NOTE = (
     "Probability estimated from a logistic regression classifier. The final "
     "pipeline was fitted on 240 synthetic scenarios (train + validation "
@@ -49,7 +52,9 @@ _PROBABILITY_NOTE = (
     "180-scenario training split and a 60-scenario validation split. This is "
     "an estimate learned from the synthetic scenario distribution and is not a "
     "validated real-spacecraft failure probability. No fixed demonstration "
-    "value may be hardcoded or presented as operational truth."
+    "value may be hardcoded or presented as operational truth. Features with "
+    "no measurable variation in the synthetic training split are retained in "
+    "the schema but neutralized so numerical noise cannot dominate inference."
 )
 
 # Expected cadence between consecutive samples (seconds)
@@ -111,7 +116,23 @@ def load_pipeline(path: str) -> None:
             _pipeline = None
             _pipeline_load_error = "MODEL_NOT_LOADED"
             return
-        if len(list(scaler.scale_)) != len(FEATURE_ORDER):
+        scale_values = [float(value) for value in scaler.scale_]
+        if len(scale_values) != len(FEATURE_ORDER):
+            _pipeline = None
+            _pipeline_load_error = "MODEL_NOT_LOADED"
+            return
+        if any(
+            not math.isfinite(scale) or scale < NEAR_CONSTANT_SCALE_FLOOR
+            for scale in scale_values
+        ):
+            _pipeline = None
+            _pipeline_load_error = "MODEL_NOT_LOADED"
+            return
+
+        coefficient_values = (
+            coef_list[0] if isinstance(coef_list[0], list) else coef_list
+        )
+        if any(not math.isfinite(float(value)) for value in coefficient_values):
             _pipeline = None
             _pipeline_load_error = "MODEL_NOT_LOADED"
             return
@@ -312,10 +333,21 @@ def _build_contributions(
 
     all_contributions: list[dict[str, Any]] = []
     for i, feature_name in enumerate(FEATURE_ORDER):
-        raw_val = raw_feature_vector[i]
-        std_val = (raw_val - means[i]) / scales[i] if scales[i] != 0.0 else 0.0
+        raw_val = float(raw_feature_vector[i])
         coef = float(coefficients[i])
+        if (
+            not math.isfinite(raw_val)
+            or not math.isfinite(means[i])
+            or not math.isfinite(scales[i])
+            or scales[i] < NEAR_CONSTANT_SCALE_FLOOR
+            or not math.isfinite(coef)
+        ):
+            raise ValueError("Invalid model contribution parameters")
+
+        std_val = (raw_val - means[i]) / scales[i]
         contribution = std_val * coef
+        if not math.isfinite(std_val) or not math.isfinite(contribution):
+            raise ValueError("Invalid model contribution result")
         all_contributions.append(
             {
                 "feature": feature_name,

@@ -1991,3 +1991,63 @@ def test_fixA6_query_timestamp_returns_iso_string() -> None:
     from datetime import datetime, timezone
     parsed = datetime.strptime(ts, "%Y-%m-%dT%H:%M:%SZ").replace(tzinfo=timezone.utc)
     assert parsed is not None
+
+
+# ===========================================================================
+# RUNTIME NUMERICAL-STABILITY REGRESSION TESTS
+# ===========================================================================
+
+def test_fixB1_near_zero_scaler_scale_is_rejected(tmp_path: Path) -> None:
+    """A stale model that can amplify floating-point noise must fail closed."""
+    import joblib
+    import numpy as np
+    import backend.app.prediction_service as svc
+    from sklearn.linear_model import LogisticRegression
+    from sklearn.pipeline import Pipeline
+    from sklearn.preprocessing import StandardScaler
+
+    rng = np.random.default_rng(42)
+    X = rng.normal(size=(40, 12))
+    y = np.array([0, 1] * 20)
+    pipeline = Pipeline([
+        ("scaler", StandardScaler()),
+        ("clf", LogisticRegression(random_state=42, max_iter=1000)),
+    ])
+    pipeline.fit(X, y)
+    slope_index = FEATURE_ORDER.index("solar_current_slope")
+    pipeline.named_steps["scaler"].scale_[slope_index] = 1e-30
+
+    model_path = str(tmp_path / "near_zero_scale.joblib")
+    joblib.dump(pipeline, model_path)
+
+    original_pipeline = svc._pipeline
+    original_error = svc._pipeline_load_error
+    try:
+        svc.load_pipeline(model_path)
+        assert svc.get_pipeline() is None
+        assert svc.get_pipeline_load_error() == "MODEL_NOT_LOADED"
+    finally:
+        svc._pipeline = original_pipeline
+        svc._pipeline_load_error = original_error
+
+
+def test_fixB1_demo_contributions_are_bounded(client: TestClient) -> None:
+    """The public demo must not expose saturated or astronomical model terms."""
+    resp = client.get("/api/v1/mock/power-risk-prediction")
+    assert resp.status_code == 200
+
+    contributions = resp.json()["ai_prediction"]["all_contributions"]
+    assert all(
+        math.isfinite(float(item["standardized_value"]))
+        and math.isfinite(float(item["coefficient"]))
+        and math.isfinite(float(item["contribution"]))
+        and abs(float(item["contribution"])) <= 100.0
+        for item in contributions
+    )
+
+    solar_slope = next(
+        item for item in contributions
+        if item["feature"] == "solar_current_slope"
+    )
+    assert math.isclose(float(solar_slope["coefficient"]), 0.0, abs_tol=1e-12)
+    assert math.isclose(float(solar_slope["contribution"]), 0.0, abs_tol=1e-12)

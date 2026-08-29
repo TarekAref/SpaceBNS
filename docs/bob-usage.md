@@ -197,6 +197,91 @@ Copy this section for each meaningful Bob-assisted task.
 
 ---
 
+### Task: Connect judge-facing dashboard to power-risk prediction API
+
+- **Date (UTC):** 2026-08-21
+- **Developer:** Tarek Aref
+- **Bob mode/workflow:** IBM Bob Agent mode — task authorized and scoped by Tarek; Bob acted as primary implementation tool
+- **Goal:** Replace the old `/api/v1/mock/assessment` dashboard integration with a full four-layer judge-facing dashboard wired to `GET /api/v1/mock/power-risk-prediction`.
+- **Prompt summary:** Read and implement the complete frontend milestone: connect the dashboard to the power-risk prediction endpoint, implement strict TypeScript types for normal and degraded API responses, build a permanent safety strip (SYNTHETIC DATA · NOT FLIGHT QUALIFIED · COMMAND AUTHORITY: NONE · SIMULATION ONLY), render four labelled layers (L1 AI estimate, L2 deterministic projection, L3 safety findings, L4 operator advisory), include an inline dependency-free SVG SOC chart for L2 with 25% threshold, a CSS horizontal-bar explainability panel for top contributions, provenance/audit metadata, accessible error and loading states with a manual-only retry button, and a `prefers-reduced-motion` rule. No dependencies added. No backend modified.
+- **Files affected:**
+  - `frontend/app/page.tsx` — replaced old assessment integration; implemented full four-layer dashboard
+  - `frontend/app/globals.css` — replaced old styles; added safety strip, advisory banner, L1–L4 panel styles, SVG chart styles, loading/error/retry styles, `prefers-reduced-motion`, responsive rules
+  - `docs/bob-usage.md` — updated (this entry)
+- **Endpoint used:** `GET ${NEXT_PUBLIC_API_BASE_URL}/api/v1/mock/power-risk-prediction` (fallback base URL: `http://localhost:8000`)
+- **Four-layer presentation:**
+  - L1: AI breach probability (% from API), predicted class, model version, 6-hour/72-sample audit basis; degraded state when `ai_prediction` is null
+  - L1 Explainability: dependency-free CSS horizontal bars for top 3 contributions, normalized against largest absolute value, positive/negative visually distinguished, described as learned associations not physical causes
+  - L2: inline SVG SOC chart when 24 hourly projection points are present, 25% SOC safety threshold line, breach points in red; omitted state with API's `projection_omitted_reason` when null; explicit "NOT AI OUTPUT" label
+  - L3: all `safety_threshold_findings` entries; "No active threshold findings" state for empty array
+  - L4: `risk_summary`, `recommendation`, `basis`, `human_action_required`, `authority_note`; advisory-only disclaimer; no command/uplink/execution controls
+  - Provenance: `scenario_id`, `query_timestamp`, `model_claim`, `samples_used`, `window_hours`, `features_used`, `action_mode`; missing optional values shown as "not available"
+- **Safety and advisory-only controls:**
+  - Permanent safety strip always visible (loading, error, and data states)
+  - No hardcoded probability, predicted class, or model result
+  - No command/uplink/execution/autonomous-action functionality
+  - No polling or auto-refresh; retry button reloads only the public API
+  - Raw exception text, response bodies, paths, and stack traces never exposed
+  - `command_authority: "NONE"` validated at response-parse time
+- **Bob contribution:** Designed the complete four-layer component hierarchy, strict TypeScript union types for normal/degraded responses, inline SVG chart with accessible labels, CSS bar chart for explainability, all state handling, safety strip, and advisory-only UX patterns. No dependencies were added.
+- **Human review and corrections:** Tarek completed post-implementation runtime review on 2026-08-27/28. That review identified a numerical-stability defect in the trained artifact plus responsive-layout collisions; the human-led corrections and validation are documented in the following entry and are not attributed to Bob.
+- **Validation performed:**
+  - `npm ci` — clean install, 0 vulnerabilities
+  - `npm run build` (Next.js 16.3.0, Turbopack) — compiled successfully, TypeScript passed, 3/3 static pages generated, no errors or warnings
+  - 99 focused backend prediction tests (`test_power_risk_prediction.py`) — all passed (13.47 s)
+  - `git diff --check` — only autocrlf normalisation warnings (same as prior tasks), no whitespace errors
+  - `git diff --name-status` — exactly `M frontend/app/globals.css` and `M frontend/app/page.tsx`; no package, lock, model, scenario, or cache artifacts changed
+  - Source inspection: no hardcoded probability values; no command/uplink/execution patterns; endpoint confirmed as `/api/v1/mock/power-risk-prediction`
+- **Visual inspection during Bob execution:** Browser visual inspection was not performed because the Bob environment had no browser preview. Post-Bob desktop, mobile, unavailable-state, and recovery-state visual QA was subsequently completed and is documented below.
+- **Result:** Four-layer dashboard implementation and build/test validation completed. Subsequent human visual QA identified and corrected numerical-stability and responsive-layout defects; see the following entry. Probabilities and projections remain API-derived, with no command controls or autonomous functionality.
+
+---
+
+### Post-Bob correction: Numerical stability and responsive visual QA
+
+- **Date (UTC):** 2026-08-27 to 2026-08-28
+- **Developer:** Tarek Aref
+- **Workflow:** Human-led verification and correction after the original Bob implementation. Bob remained the primary implementation tool for the original milestones; this correction was completed after Bob access was unavailable and is not attributed to Bob.
+- **Trigger:** Live desktop inspection exposed an impossible `solar_current_slope` contribution of approximately `-1.1850793840034144e+30`, a displayed breach probability of `0%`, provenance-field collisions, and contribution-value overflow.
+- **Root cause:** `solar_current_slope` was effectively constant in the synthetic training split (`scale = 1.88533495521e-33`) but nonzero in the public demonstration history. Standardization amplified floating-point noise into an extreme out-of-distribution value that dominated the logistic-regression output.
+- **Corrections:**
+  - Detect near-constant features from the training split only using a population-standard-deviation floor of `1e-12`.
+  - Neutralize the frozen feature columns in training and validation matrices while retaining all 12 schema positions for compatibility and auditability.
+  - Reject stale or malformed artifacts with non-finite or microscopic scaler values and guard contribution arithmetic against non-finite or implausibly large values.
+  - Bump the runtime model version from `0.1.0` to `0.1.1`.
+  - Add dependency-free frontend response bounds, compact numeric formatting, provenance wrapping, contribution overflow protection, and responsive stacking.
+- **Files affected:**
+  - `backend/app/prediction_service.py`
+  - `backend/scripts/train_power_risk_model.py`
+  - `backend/tests/test_model_pipeline.py`
+  - `backend/tests/test_power_risk_prediction.py`
+  - `frontend/app/page.tsx`
+  - `frontend/app/globals.css`
+  - `docs/bob-usage.md`
+  - `data/models/power_risk_classifier.joblib` — regenerated locally; git-ignored and not committed
+- **Model-selection isolation:** Near-constant-feature detection used only the 180-scenario training split. Hyperparameter selection continued to use only the 60-scenario validation split. The final model used the frozen mask and 240 train+validation scenarios. `solar_current_slope` was the only neutralized feature; its saved scaler scale is `1.0` and classifier coefficient is `0.0`. Validation selected `C=0.01` using the pre-existing candidate set and tie rule.
+- **Validation performed before held-out evaluation:**
+  - Corrected artifact invariant — `solar_current_slope` scale `1.0`, coefficient `0.0`
+  - Focused model/prediction suite — 130 passed in 53.30 seconds
+  - Complete backend suite — 3,686 passed in 46.52 seconds
+  - Frontend production build — compiled, TypeScript passed, page data collected, and 3/3 static pages generated
+  - Desktop runtime — API response rendered at `33%`, model `0.1.1`, normal-sized top contributions, and collision-free provenance layout
+  - Mobile emulation — approximately 390-pixel target viewport; stacked cards, long values, contributions, and advisory content remained readable without observed horizontal page overflow
+  - Loading, API-unavailable, and manual-retry recovery states — permanent safety strip preserved; generic error text exposed no response body, path, stack trace, or raw exception; successful data returned only after manual retry
+- **Corrective held-out evaluation disclosure:** Version `0.1.1` is a materially different artifact, so the earlier version `0.1.0` metrics were not reused. The same seed-42 synthetic test split was accessed once more after the model was frozen. This was a defect-driven corrective evaluation, not an untouched first evaluation. The correction was selected from runtime numerical evidence and training/validation data, not from test metrics. No tuning, retraining, or repeat metric evaluation occurred after these results.
+- **Version 0.1.1 held-out synthetic results:**
+  - ROC-AUC: 1.000 (gate >= 0.80 passed)
+  - Recall: 1.000 (gate >= 0.75 passed)
+  - Precision: 0.666667 (gate >= 0.65 passed)
+  - F1: 0.800 (gate >= 0.70 passed)
+  - Brier score: 0.14379 (gate <= 0.20 passed)
+  - Confusion matrix `[[TN, FP], [FN, TP]]`: `[[15, 15], [0, 30]]`
+  - Leakage violations: 0; breach-eligibility violations: 0; all seven contract gates passed
+- **Interpretation:** The corrected model preserved recall on the synthetic test distribution but produced 15 false positives, leaving precision only narrowly above its gate. This conservative error profile may be acceptable for an advisory prototype but would create operator burden and must not be represented as operational performance. The test set is no longer untouched, and these synthetic results do not demonstrate real-spacecraft generalization.
+- **Result:** The extreme contribution defect and desktop/mobile layout failures were corrected. Model `0.1.1` is frozen after its single corrective metric run. The system remains `SYNTHETIC`, `NOT_FLIGHT_QUALIFIED`, advisory-only, and `command_authority: "NONE"`.
+
+---
+
 ## Suggested evidence categories
 
 - architecture decomposition;

@@ -26,6 +26,7 @@ M20  Model artifact serialisation and reload.
 M21  Generated model and corpus paths are Git-ignored.
 M22  No import-time training, file creation, or side effects.
 M23  ROC-AUC calculation matches sklearn reference for a known case.
+M24  Near-constant training features are neutralized before fitting.
 """
 
 from __future__ import annotations
@@ -679,4 +680,34 @@ def test_M23_roc_auc_matches_sklearn_reference() -> None:
 
     assert math.isclose(our_auc, ref_auc, rel_tol=1e-6), (
         f"ROC-AUC mismatch: ours={our_auc}, sklearn={ref_auc}"
+    )
+
+
+# ---------------------------------------------------------------------------
+# M24 — Near-constant training features are neutralized
+# ---------------------------------------------------------------------------
+
+def test_M24_near_constant_training_feature_is_neutralized() -> None:
+    """A numerically constant feature must not acquire predictive weight."""
+    import joblib  # noqa: PLC0415
+
+    m = _import_train()
+    with tempfile.TemporaryDirectory() as tmpdir:
+        model_path = os.path.join(tmpdir, "model.joblib")
+        summary = m.train_power_risk_model(save_path=model_path)
+        pipeline = joblib.load(model_path)
+
+    assert summary["neutralized_features"] == ["solar_current_slope"]
+
+    feature_index = m.FEATURE_ORDER.index("solar_current_slope")
+    scaler = pipeline.named_steps["scaler"]
+    clf = pipeline.named_steps["clf"]
+
+    assert math.isclose(float(scaler.mean_[feature_index]), 0.0, abs_tol=1e-15)
+    assert math.isclose(float(scaler.scale_[feature_index]), 1.0, abs_tol=1e-15)
+    assert math.isclose(float(clf.coef_[0][feature_index]), 0.0, abs_tol=1e-15)
+    assert all(
+        math.isfinite(float(scale))
+        and float(scale) >= m.NEAR_CONSTANT_SCALE_FLOOR
+        for scale in scaler.scale_
     )
