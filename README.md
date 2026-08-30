@@ -16,6 +16,16 @@ safety findings, and a human-facing advisory.
 > transmit spacecraft commands. Every prediction response declares
 > `command_authority: "NONE"`.
 
+## Live demonstration
+
+- **Mission-assurance dashboard:** https://spacebns.vercel.app/
+- **API health:** https://spacebns-api.onrender.com/health
+- **Public prediction response:** https://spacebns-api.onrender.com/api/v1/mock/power-risk-prediction
+
+The backend uses a free hosting tier and may require up to approximately one
+minute to wake after inactivity. The dashboard will show a safe unavailable
+state until the API responds; use its manual retry control after wake-up.
+
 ## Challenge fit
 
 **August Challenge — Advance Space Exploration with AI**
