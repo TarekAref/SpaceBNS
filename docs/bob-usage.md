@@ -296,7 +296,15 @@ Copy this section for each meaningful Bob-assisted task.
 
 ## Submission summary
 
-Before submission, replace this paragraph with a concise, evidence-backed
-summary of how IBM Bob functioned as the primary development tool across
-planning, implementation, testing, debugging, and documentation.
+IBM Bob served as the primary development tool for the recorded dependency
+security work, repository hygiene, deterministic scenario generation, model
+training and evaluation pipeline, four-layer prediction API, contract-alignment
+corrections, automated tests, and judge-facing dashboard implementation. Tarek
+Aref scoped and approved the work, reviewed the resulting changes, corrected
+scientific and contract details, and retained responsibility for every decision.
+Post-Bob numerical-stability corrections, responsive visual quality assurance,
+deployment, and final validation were completed separately and are explicitly
+identified above rather than attributed to Bob. IBM Bob is not a runtime
+component: it does not generate predictions, make operator decisions, or hold
+spacecraft command authority.
 
