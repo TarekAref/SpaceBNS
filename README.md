@@ -2,7 +2,7 @@
 
 **An explainable early-warning advisory for spacecraft power constraints.**
 
-[![Challenge](https://img.shields.io/badge/IBM%20August%20Challenge-Advance%20Space%20Exploration%20with%20AI-0f62fe)](#challenge-fit)
+[![Challenge](https://img.shields.io/badge/IBM%20August%20Challenge-Advance%20Space%20Exploration%20with%20AI-0f62fe)](#selected-challenge-theme)
 [![License](https://img.shields.io/badge/License-Apache%202.0-blue.svg)](LICENSE)
 [![Status](https://img.shields.io/badge/status-Validated%20MVP-24a148)](#validation-evidence)
 
@@ -52,9 +52,15 @@ minute to wake after inactivity. Open the health link first. The dashboard will
 show a safe unavailable state until the API responds; use **Retry data load**
 after wake-up.
 
-## Challenge fit
+## Selected challenge theme
 
-**August Challenge — Advance Space Exploration with AI**
+**Advance Space Exploration with AI — IBM August Challenge**
+
+SpaceBNS addresses this theme through a bounded spacecraft power-risk advisory
+that combines explainable machine learning, deterministic safety logic, and
+explicit human authority.
+
+## Problem statement
 
 Resource-limited spacecraft require operators to recognize power risk early,
 without confusing a statistical estimate with physical certainty or allowing
@@ -80,7 +86,7 @@ A realistic adoption path is deliberately staged:
 5. Operational qualification.
 6. Flight consideration only after independent verification.
 
-## What the MVP does
+## Solution description
 
 1. Validates a 72-sample history at five-minute cadence.
 2. Extracts a frozen 12-feature power vector.
@@ -98,7 +104,7 @@ The system fails closed. It does not invent a physical projection when battery
 capacity, load, conversion efficiency, sunlight, or payload-schedule
 assumptions are missing.
 
-## Architecture
+## AI approach and architecture
 
 ```mermaid
 flowchart TD
