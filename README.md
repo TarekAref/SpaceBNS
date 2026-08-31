@@ -1,34 +1,66 @@
 # SpaceBNS
 
-**Evidence-grounded, forecast-aware, policy-constrained power-risk advisory for resource-limited spacecraft**
+**An explainable early-warning advisory for spacecraft power constraints.**
 
-[![Challenge](https://img.shields.io/badge/IBM%20August%20Challenge-Advance%20Space%20Exploration%20with%20AI-0f62fe)](#challenge-fit)
+[![Challenge](https://img.shields.io/badge/IBM%20August%20Challenge-Advance%20Space%20Exploration%20with%20AI-0f62fe)](#selected-challenge-theme)
 [![License](https://img.shields.io/badge/License-Apache%202.0-blue.svg)](LICENSE)
 [![Status](https://img.shields.io/badge/status-Validated%20MVP-24a148)](#validation-evidence)
 
-SpaceBNS is a public proof-of-concept developed by **BNS Innovation** for the
-IBM August Challenge. It turns a recent spacecraft power-telemetry window into
-an explainable risk estimate, an optional deterministic projection, explicit
-safety findings, and a human-facing advisory.
+[**Live Dashboard**](https://spacebns.vercel.app/) · **3-Minute Demo — final upload pending** · [**90-Second Judge Guide**](JUDGE.md) · [**Public API**](https://spacebns-api.onrender.com/api/v1/mock/power-risk-prediction)
+
+SpaceBNS turns six hours of spacecraft telemetry into a 24-hour power-risk
+estimate, explains what influenced it, applies deterministic safety rules, and
+refuses to invent missing physics. It provides advice only and can never issue
+spacecraft commands.
+
+> **Representative simulation scenario:** A resource-limited spacecraft is
+> approaching another payload window. Its operations team must determine
+> whether recent power telemetry indicates a developing constraint—but an AI
+> score alone is not enough to justify action.
+
+The system's most important behavior is not that it always returns an answer.
+It is that it knows when not to: if the physical assumptions required for a
+deterministic energy projection are missing, SpaceBNS omits that projection,
+states why, and still presents the learned risk estimate, deterministic safety
+findings, and human-review advisory.
 
 > **Safety and maturity notice:** SpaceBNS uses synthetic data only. It is not
 > flight-qualified, is not connected to a spacecraft, and cannot authorize or
 > transmit spacecraft commands. Every prediction response declares
 > `command_authority: "NONE"`.
 
+> **Built with IBM Bob:** Bob supported architecture planning, implementation,
+> testing, review, and documentation. Detailed, human-reviewed evidence is
+> available in [docs/bob-usage.md](docs/bob-usage.md). Bob is not a runtime
+> component and has no role in predictions or command authority.
+
+**Validation at a glance:** 7/7 held-out evaluation gates passed · 130 focused
+model-pipeline and prediction tests · clean-source model regeneration produced
+a SHA-256-identical artifact. See [Validation evidence](#validation-evidence)
+for the full, reproducible record and limitations.
+
 ## Live demonstration
 
 - **Mission-assurance dashboard:** https://spacebns.vercel.app/
-- **API health:** https://spacebns-api.onrender.com/health
+- **API health / wake-up:** https://spacebns-api.onrender.com/health
 - **Public prediction response:** https://spacebns-api.onrender.com/api/v1/mock/power-risk-prediction
+- **Fast judge path:** [JUDGE.md](JUDGE.md)
+- **Final demo narration and shot plan:** [docs/demo-recording-script.md](docs/demo-recording-script.md)
 
 The backend uses a free hosting tier and may require up to approximately one
-minute to wake after inactivity. The dashboard will show a safe unavailable
-state until the API responds; use its manual retry control after wake-up.
+minute to wake after inactivity. Open the health link first. The dashboard will
+show a safe unavailable state until the API responds; use **Retry data load**
+after wake-up.
 
-## Challenge fit
+## Selected challenge theme
 
-**August Challenge — Advance Space Exploration with AI**
+**Advance Space Exploration with AI — IBM August Challenge**
+
+SpaceBNS addresses this theme through a bounded spacecraft power-risk advisory
+that combines explainable machine learning, deterministic safety logic, and
+explicit human authority.
+
+## Problem statement
 
 Resource-limited spacecraft require operators to recognize power risk early,
 without confusing a statistical estimate with physical certainty or allowing
@@ -38,7 +70,23 @@ AI output to become a command. The MVP addresses one bounded question:
 > estimated probability of a power-constraint breach within 24 hours, what
 > safety evidence is active, and what advisory should a human operator review?
 
-## What the MVP does
+## Why it matters
+
+Power constraints can force spacecraft operators to delay payload activity,
+conserve battery margin, or adopt more conservative operating plans. SpaceBNS
+helps prioritize human review earlier while preserving operator authority and
+clearly separating statistical risk from physical certainty.
+
+A realistic adoption path is deliberately staged:
+
+1. Synthetic proof of concept.
+2. Independent simulated scenario families.
+3. Hardware-in-the-loop evaluation.
+4. Validation against authorized real telemetry.
+5. Operational qualification.
+6. Flight consideration only after independent verification.
+
+## Solution description
 
 1. Validates a 72-sample history at five-minute cadence.
 2. Extracts a frozen 12-feature power vector.
@@ -56,7 +104,7 @@ The system fails closed. It does not invent a physical projection when battery
 capacity, load, conversion efficiency, sunlight, or payload-schedule
 assumptions are missing.
 
-## Architecture
+## AI approach and architecture
 
 ```mermaid
 flowchart TD
@@ -115,15 +163,18 @@ filesystem paths, stack traces, or internal exceptions.
 - Interpretation: contributions are standardized value × coefficient. They are
   learned associations, not proven physical causes.
 
-The held-out test split was evaluated once after the model was frozen:
+The held-out test split was evaluated once after the model was frozen. The
+prototype's honest limitations—15 false positives, precision of 0.666667, a
+small balanced test set, and synthetic-only validation—matter as much as its
+passed contract gates.
 
 | Metric | Result | Contract gate |
 | --- | ---: | ---: |
-| ROC AUC | 1.000000 | ≥ 0.80 |
-| Recall | 1.000000 | ≥ 0.75 |
 | Precision | 0.666667 | ≥ 0.65 |
+| Recall | 1.000000 | ≥ 0.75 |
 | F1 | 0.800000 | ≥ 0.70 |
 | Brier score | 0.143790 | ≤ 0.20 |
+| ROC AUC | 1.000000 | ≥ 0.80 |
 | Leakage violations | 0 | = 0 |
 | Breach-eligibility violations | 0 | = 0 |
 
@@ -213,14 +264,18 @@ npm --prefix frontend run dev
 
 ## Validation evidence
 
-The final MVP passed:
+The strongest judge-facing proof is:
 
-- **3,686 backend tests**;
-- **130 focused model-pipeline and prediction tests**;
+- **7/7 held-out evaluation gates passed**, including leakage and
+  breach-eligibility gates;
+- **130 focused model-pipeline and prediction tests** passed; and
+- **clean-source model regeneration produced a SHA-256-identical artifact**.
+
+Supporting validation also passed:
+
+- **3,686 total backend tests**;
 - the Next.js production build, including TypeScript checking;
-- all seven held-out evaluation gates;
 - `git diff --check`;
-- clean-source model generation with a SHA-256-identical artifact;
 - a clean-source API smoke test returning HTTP 200, model `0.1.1`, finite
   contributions, and the complete safety envelope; and
 - desktop, approximately 400-pixel mobile, API-unavailable, manual-retry, and
@@ -274,11 +329,11 @@ SpaceBNS/
 
 ## Future roadmap
 
-Future work may include independent scenario families, calibration analysis,
-real-telemetry validation under appropriate agreements, richer physics,
-causal/dependency graphs, grounded procedure retrieval, imagery analysis, and
-embedded-target benchmarking. Each addition would require a new validation
-boundary. Autonomous commanding remains out of scope.
+Future work follows the staged adoption path above: independent scenario
+families, calibration analysis, hardware-in-the-loop evaluation, authorized
+real-telemetry validation, richer physics, and embedded-target benchmarking.
+Each addition requires a new validation boundary. Autonomous commanding remains
+out of scope.
 
 ## Team
 
