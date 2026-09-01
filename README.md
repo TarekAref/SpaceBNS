@@ -18,6 +18,7 @@ safety findings, and a human-facing advisory.
 
 ## Live demonstration
 
+- **3-minute project demo:** https://youtu.be/dAUYIlgKXaA
 - **Mission-assurance dashboard:** https://spacebns.vercel.app/
 - **API health:** https://spacebns-api.onrender.com/health
 - **Public prediction response:** https://spacebns-api.onrender.com/api/v1/mock/power-risk-prediction
